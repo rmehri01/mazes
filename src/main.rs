@@ -1,3 +1,5 @@
 fn main() {
-    println!("Hello, world!");
+    let mut grid = mazes::Grid::new(4, 4);
+    mazes::binary_tree(&mut grid);
+    println!("{grid}");
 }
