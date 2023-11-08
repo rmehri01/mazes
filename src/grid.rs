@@ -4,8 +4,8 @@ use petgraph::prelude::UnGraphMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Cell {
-    row: usize,
-    col: usize,
+    row: isize,
+    col: isize,
 }
 
 pub struct Grid {
@@ -17,8 +17,8 @@ pub struct Grid {
 impl Grid {
     pub fn new(rows: usize, cols: usize) -> Self {
         let mut links = UnGraphMap::with_capacity(rows * cols, 0);
-        for row in 0..rows {
-            for col in 0..cols {
+        for row in 0..rows as isize {
+            for col in 0..cols as isize {
                 links.add_node(Cell { row, col });
             }
         }
@@ -34,11 +34,11 @@ impl Grid {
     }
 
     pub fn iter_cells(rows: usize, cols: usize) -> impl Iterator<Item = Cell> {
-        (0..rows).flat_map(move |row| (0..cols).map(move |col| Cell { row, col }))
+        (0..rows as isize).flat_map(move |row| (0..cols as isize).map(move |col| Cell { row, col }))
     }
 
     pub fn iter_rows(rows: usize, cols: usize) -> impl Iterator<Item = impl Iterator<Item = Cell>> {
-        (0..rows).map(move |row| (0..cols).map(move |col| Cell { row, col }))
+        (0..rows as isize).map(move |row| (0..cols as isize).map(move |col| Cell { row, col }))
     }
 
     pub fn link(&mut self, cell: Cell, other: Cell) {
@@ -60,28 +60,19 @@ impl Grid {
     }
 
     pub fn north(&self, cell: Cell) -> Option<Cell> {
-        // TODO: better to use isize?
-        if cell.row == 0 {
-            return None;
-        }
-
         self.get(cell.row - 1, cell.col)
     }
     pub fn south(&self, cell: Cell) -> Option<Cell> {
         self.get(cell.row + 1, cell.col)
     }
     pub fn west(&self, cell: Cell) -> Option<Cell> {
-        if cell.col == 0 {
-            return None;
-        }
-
         self.get(cell.row, cell.col - 1)
     }
     pub fn east(&self, cell: Cell) -> Option<Cell> {
         self.get(cell.row, cell.col + 1)
     }
 
-    pub fn get(&self, row: usize, col: usize) -> Option<Cell> {
+    pub fn get(&self, row: isize, col: isize) -> Option<Cell> {
         let cell = Cell { row, col };
         self.links.contains_node(cell).then_some(cell)
     }
@@ -96,13 +87,60 @@ impl Grid {
 
 impl fmt::Display for Grid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "+{}", "---+".repeat(self.cols))?;
+        let is_space_between_empty = |cell, other| match (cell, other) {
+            // both outside the grid, so space should be empty
+            (None, None) => true,
+            // one is outside the grid, so space should not be empty since it's an outer wall
+            (None, Some(_)) | (Some(_), None) => false,
+            // the space should be empty if the two cells are linked
+            (Some(cell), Some(other)) => self.are_linked(cell, other),
+        };
 
-        for row in 0..self.rows {
-            let mut top = "|".to_string();
-            let mut bot = "+".to_string();
+        let connector_at = |row, col| {
+            let empty_north =
+                is_space_between_empty(self.get(row - 1, col - 1), self.get(row - 1, col));
+            let empty_south = is_space_between_empty(self.get(row, col - 1), self.get(row, col));
+            let empty_west =
+                is_space_between_empty(self.get(row - 1, col - 1), self.get(row, col - 1));
+            let empty_east = is_space_between_empty(self.get(row - 1, col), self.get(row, col));
 
-            for col in 0..self.cols {
+            match (empty_north, empty_south, empty_west, empty_east) {
+                (false, true, true, true) => '╵',
+                (true, false, true, true) => '╷',
+                (true, true, false, true) => '╴',
+                (true, true, true, false) => '╶',
+                (true, false, false, false) => '┬',
+                (false, true, false, false) => '┴',
+                (false, false, true, false) => '├',
+                (false, false, false, true) => '┤',
+                (true, true, false, false) => '─',
+                (true, false, true, false) => '┌',
+                (true, false, false, true) => '┐',
+                (false, true, true, false) => '└',
+                (false, true, false, true) => '┘',
+                (false, false, true, true) => '│',
+                (false, false, false, false) => '┼',
+                (true, true, true, true) => {
+                    unreachable!("not possible in a perfect maze")
+                }
+            }
+        };
+
+        writeln!(
+            f,
+            "{}",
+            (1..=self.cols as isize).fold(connector_at(0, 0).to_string(), |mut acc, col| {
+                acc.push_str("───");
+                acc.push(connector_at(0, col));
+                acc
+            })
+        )?;
+
+        for row in 0..self.rows as isize {
+            let mut top = "│".to_string();
+            let mut bot = connector_at(row + 1, 0).to_string();
+
+            for col in 0..self.cols as isize {
                 // TODO: may be none later
                 let cell = self.get(row, col).unwrap();
 
@@ -114,7 +152,7 @@ impl fmt::Display for Grid {
                 {
                     ' '
                 } else {
-                    '|'
+                    '│'
                 };
                 top.push(east_boundary);
 
@@ -125,10 +163,10 @@ impl fmt::Display for Grid {
                 {
                     "   "
                 } else {
-                    "---"
+                    "───"
                 };
                 bot.push_str(south_boundary);
-                bot.push('+');
+                bot.push(connector_at(row + 1, col + 1));
             }
 
             writeln!(f, "{top}")?;
