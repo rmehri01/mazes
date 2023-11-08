@@ -1,5 +1,7 @@
 use core::fmt;
 
+use image::{Rgb, RgbImage};
+use imageproc::drawing::draw_line_segment_mut;
 use petgraph::prelude::UnGraphMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -82,6 +84,48 @@ impl Grid {
 
     pub fn size(&self) -> usize {
         self.rows * self.cols
+    }
+
+    pub fn save_png(&self, file_name: &str, cell_size: u32) {
+        let width = cell_size * self.cols as u32;
+        let height = cell_size * self.rows as u32;
+
+        let background = Rgb([255, 255, 255]);
+        let wall = Rgb([0, 0, 0]);
+
+        let mut img = RgbImage::from_pixel(width + 1, height + 1, background);
+
+        for cell in Self::iter_cells(self.rows, self.cols) {
+            let x1 = cell.col as f32 * cell_size as f32;
+            let y1 = cell.row as f32 * cell_size as f32;
+            let x2 = (cell.col + 1) as f32 * cell_size as f32;
+            let y2 = (cell.row + 1) as f32 * cell_size as f32;
+
+            if self.north(cell).is_none() {
+                draw_line_segment_mut(&mut img, (x1, y1), (x2, y1), wall);
+            }
+            if self.west(cell).is_none() {
+                draw_line_segment_mut(&mut img, (x1, y1), (x1, y2), wall);
+            }
+
+            if !self
+                .east(cell)
+                .map(|east| self.are_linked(cell, east))
+                .unwrap_or(false)
+            {
+                draw_line_segment_mut(&mut img, (x2, y1), (x2, y2), wall);
+            }
+            if !self
+                .south(cell)
+                .map(|south| self.are_linked(cell, south))
+                .unwrap_or(false)
+            {
+                draw_line_segment_mut(&mut img, (x1, y2), (x2, y2), wall);
+            }
+        }
+
+        img.save(format!("images/{file_name}.png"))
+            .expect("image to be saved");
     }
 }
 
