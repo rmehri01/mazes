@@ -3,8 +3,14 @@ name = "mazes"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 petgraph = "0.6.4"
 rand = "0.8.5"
+
+[[bin]]
+name = "binary_tree"
+path = "demos/binary_tree.rs"
+
+[[bin]]
+name = "sidewinder"
+path = "demos/sidewinder.rs"

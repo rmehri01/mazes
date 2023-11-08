@@ -10,5 +10,7 @@
 
 mod binary_tree;
 pub use binary_tree::binary_tree;
+mod sidewinder;
+pub use sidewinder::sidewinder;
 mod grid;
 pub use grid::Grid;

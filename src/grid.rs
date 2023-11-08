@@ -37,8 +37,8 @@ impl Grid {
         (0..rows).flat_map(move |row| (0..cols).map(move |col| Cell { row, col }))
     }
 
-    pub fn iter_rows(row: usize, cols: usize) -> impl Iterator<Item = Cell> {
-        (0..cols).map(move |col| Cell { row, col })
+    pub fn iter_rows(rows: usize, cols: usize) -> impl Iterator<Item = impl Iterator<Item = Cell>> {
+        (0..rows).map(move |row| (0..cols).map(move |col| Cell { row, col }))
     }
 
     pub fn link(&mut self, cell: Cell, other: Cell) {
