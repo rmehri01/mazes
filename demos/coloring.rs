@@ -13,5 +13,5 @@ fn main() {
     );
     mazes::binary_tree(&mut grid);
     println!("{grid}");
-    grid.save_png("colorized", 10);
+    grid.save_png("colorized", 25);
 }
