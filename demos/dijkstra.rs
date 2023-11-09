@@ -4,7 +4,7 @@ fn main() {
     mazes::binary_tree(&mut grid);
     println!("{grid}");
 
-    grid.set_end(mazes::Cell {
+    grid.set_goal(mazes::Cell {
         row: grid.rows() as isize - 1,
         col: 0,
     });

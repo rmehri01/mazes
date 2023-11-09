@@ -11,11 +11,11 @@ pub struct Grid {
     cols: usize,
     links: UnGraphMap<Cell, ()>,
     start: Option<Cell>,
-    end: Option<Cell>,
+    goal: Option<Cell>,
 }
 
 impl Grid {
-    pub fn new(rows: usize, cols: usize, start: Option<Cell>, end: Option<Cell>) -> Self {
+    pub fn new(rows: usize, cols: usize, start: Option<Cell>, goal: Option<Cell>) -> Self {
         let mut links = UnGraphMap::with_capacity(rows * cols, 0);
         for row in 0..rows as isize {
             for col in 0..cols as isize {
@@ -28,7 +28,7 @@ impl Grid {
             cols,
             links,
             start,
-            end,
+            goal,
         }
     }
 
@@ -42,8 +42,8 @@ impl Grid {
     pub fn set_start(&mut self, start: Cell) {
         self.start = Some(start);
     }
-    pub fn set_end(&mut self, start: Cell) {
-        self.end = Some(start);
+    pub fn set_goal(&mut self, start: Cell) {
+        self.goal = Some(start);
     }
 
     pub fn iter_cells(rows: usize, cols: usize) -> impl Iterator<Item = Cell> {
@@ -204,10 +204,10 @@ impl fmt::Display for Grid {
             }
         };
 
-        let distances = match (self.start, self.end) {
+        let distances = match (self.start, self.goal) {
             (None, None) => None,
             (None, Some(cell)) | (Some(cell), None) => Some(self.distances_from(cell)),
-            (Some(start), Some(end)) => Some(self.distances_from(start).path_to(end, self)),
+            (Some(start), Some(goal)) => Some(self.distances_from(start).path_to(goal, self)),
         };
 
         writeln!(

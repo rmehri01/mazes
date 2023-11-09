@@ -21,3 +21,7 @@ path = "demos/sidewinder.rs"
 [[bin]]
 name = "dijkstra"
 path = "demos/dijkstra.rs"
+
+[[bin]]
+name = "longest_path"
+path = "demos/longest_path.rs"

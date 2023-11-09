@@ -32,16 +32,23 @@ impl Distances {
         breadcrumbs.insert(current, self[current]);
 
         while current != self.root {
-            for linked in grid.links(current) {
-                if self[linked] < self[current] {
-                    breadcrumbs.insert(linked, self[linked]);
-                    current = linked;
-                    break;
-                }
-            }
+            let closer = grid
+                .links(current)
+                .find(|linked| self[*linked] < self[current])
+                .expect("at least one link to the current cell should be closer to the root");
+            breadcrumbs.insert(closer, self[closer]);
+            current = closer;
         }
 
         breadcrumbs
+    }
+
+    pub fn max(&self) -> (Cell, usize) {
+        self.distances
+            .iter()
+            .max_by_key(|(_, dist)| **dist)
+            .map(|(cell, dist)| (*cell, *dist))
+            .expect("distances should be non-empty")
     }
 }
 
