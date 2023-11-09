@@ -1,7 +1,10 @@
 use core::fmt;
 
 use image::{Rgb, RgbImage};
-use imageproc::drawing::draw_line_segment_mut;
+use imageproc::{
+    drawing::{draw_filled_rect_mut, draw_line_segment_mut},
+    rect::Rect,
+};
 use petgraph::prelude::UnGraphMap;
 
 use crate::{cell::Cell, distances::Distances};
@@ -121,6 +124,15 @@ impl Grid {
     }
 
     pub fn save_png(&self, file_name: &str, cell_size: u32) {
+        fn background_for_cell(distances: &Distances, cell: Cell) -> Rgb<u8> {
+            let distance = distances[cell];
+            let (_, max) = distances.max();
+            let intensity = (max - distance) as f32 / max as f32;
+            let dark = (255.0 * intensity).round() as u8;
+            let bright = 128 + (127.0 * intensity) as u8;
+            Rgb([dark, bright, dark])
+        }
+
         let width = cell_size * self.cols as u32;
         let height = cell_size * self.rows as u32;
 
@@ -128,6 +140,21 @@ impl Grid {
         let wall = Rgb([0, 0, 0]);
 
         let mut img = RgbImage::from_pixel(width + 1, height + 1, background);
+
+        if let Some(distances) = self.distances() {
+            for cell in Self::iter_cells(self.rows, self.cols) {
+                let color = background_for_cell(&distances, cell);
+                draw_filled_rect_mut(
+                    &mut img,
+                    Rect::at(
+                        cell.col as i32 * cell_size as i32,
+                        cell.row as i32 * cell_size as i32,
+                    )
+                    .of_size(cell_size, cell_size),
+                    color,
+                );
+            }
+        }
 
         for cell in Self::iter_cells(self.rows, self.cols) {
             let x1 = cell.col as f32 * cell_size as f32;
@@ -160,6 +187,14 @@ impl Grid {
 
         img.save(format!("images/{file_name}.png"))
             .expect("image to be saved");
+    }
+
+    fn distances(&self) -> Option<Distances> {
+        match (self.start, self.goal) {
+            (None, None) => None,
+            (None, Some(cell)) | (Some(cell), None) => Some(self.distances_from(cell)),
+            (Some(start), Some(goal)) => Some(self.distances_from(start).path_to(goal, self)),
+        }
     }
 }
 
@@ -204,11 +239,7 @@ impl fmt::Display for Grid {
             }
         };
 
-        let distances = match (self.start, self.goal) {
-            (None, None) => None,
-            (None, Some(cell)) | (Some(cell), None) => Some(self.distances_from(cell)),
-            (Some(start), Some(goal)) => Some(self.distances_from(start).path_to(goal, self)),
-        };
+        let distances = self.distances();
 
         writeln!(
             f,
