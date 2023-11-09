@@ -37,3 +37,7 @@ path = "demos/aldous_broder.rs"
 [[bin]]
 name = "wilsons"
 path = "demos/wilsons.rs"
+
+[[bin]]
+name = "hunt_and_kill"
+path = "demos/hunt_and_kill.rs"

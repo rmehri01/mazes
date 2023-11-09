@@ -13,6 +13,7 @@ mod binary_tree;
 mod cell;
 mod distances;
 mod grid;
+mod hunt_and_kill;
 mod sidewinder;
 mod wilsons;
 
@@ -20,5 +21,6 @@ pub use aldous_broder::aldous_broder;
 pub use binary_tree::binary_tree;
 pub use cell::Cell;
 pub use grid::Grid;
+pub use hunt_and_kill::hunt_and_kill;
 pub use sidewinder::sidewinder;
 pub use wilsons::wilsons;
