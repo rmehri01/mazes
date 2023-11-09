@@ -14,9 +14,11 @@ mod cell;
 mod distances;
 mod grid;
 mod sidewinder;
+mod wilsons;
 
 pub use aldous_broder::aldous_broder;
 pub use binary_tree::binary_tree;
 pub use cell::Cell;
 pub use grid::Grid;
 pub use sidewinder::sidewinder;
+pub use wilsons::wilsons;

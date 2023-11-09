@@ -33,3 +33,7 @@ path = "demos/coloring.rs"
 [[bin]]
 name = "aldous_broder"
 path = "demos/aldous_broder.rs"
+
+[[bin]]
+name = "wilsons"
+path = "demos/wilsons.rs"
