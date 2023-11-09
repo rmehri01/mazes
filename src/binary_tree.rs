@@ -2,7 +2,7 @@ use crate::grid::Grid;
 
 // TODO: should this be part of grid?
 pub fn binary_tree(grid: &mut Grid) {
-    for cell in Grid::iter_cells(grid.rows(), grid.cols()) {
+    for cell in grid.cells() {
         match (grid.north(cell), grid.east(cell)) {
             (None, None) => {}
             (None, Some(other)) | (Some(other), None) => grid.link(cell, other),

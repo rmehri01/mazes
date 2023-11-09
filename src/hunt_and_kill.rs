@@ -16,7 +16,7 @@ pub fn hunt_and_kill(grid: &mut Grid) {
                 current = Some(neighbour);
             }
             None => {
-                current = Grid::iter_cells(grid.rows(), grid.cols()).find_map(|c| {
+                current = grid.cells().into_iter().find_map(|c| {
                     if grid.links(c).next().is_none() {
                         let visited_neighbours = grid
                             .neighbours(c)

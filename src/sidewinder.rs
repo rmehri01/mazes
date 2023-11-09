@@ -3,7 +3,7 @@ use rand::seq::SliceRandom;
 use crate::grid::Grid;
 
 pub fn sidewinder(grid: &mut Grid) {
-    for row in Grid::iter_rows(grid.rows(), grid.cols()) {
+    for row in grid.rows() {
         let mut run = Vec::new();
 
         for cell in row {

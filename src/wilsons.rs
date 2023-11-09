@@ -6,7 +6,7 @@ use rand::{
 use crate::grid::Grid;
 
 pub fn wilsons(grid: &mut Grid) {
-    let mut unvisited = Grid::iter_cells(grid.rows(), grid.cols()).collect::<Vec<_>>();
+    let mut unvisited = grid.cells();
 
     let first_idx = rand::thread_rng().gen_range(0..unvisited.len());
     unvisited.swap_remove(first_idx);

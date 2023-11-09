@@ -49,3 +49,7 @@ path = "demos/deadend_counts.rs"
 [[bin]]
 name = "recursive_backtracker"
 path = "demos/recursive_backtracker.rs"
+
+[[bin]]
+name = "simple_mask"
+path = "demos/simple_mask.rs"

@@ -16,7 +16,7 @@ fn main() {
 
         let deadend_counts = (0..TRIES)
             .map(|_| {
-                let mut grid = mazes::Grid::new(SIZE, SIZE, None, None);
+                let mut grid = mazes::Grid::new(&mazes::Mask::new(SIZE, SIZE), None, None);
                 // TODO: could clean up
                 let generator = match name {
                     "binary_tree" => mazes::binary_tree,

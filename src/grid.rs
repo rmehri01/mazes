@@ -6,9 +6,9 @@ use imageproc::{
     rect::Rect,
 };
 use petgraph::prelude::UnGraphMap;
-use rand::Rng;
+use rand::seq::IteratorRandom;
 
-use crate::{cell::Cell, distances::Distances};
+use crate::{cell::Cell, distances::Distances, Mask};
 
 pub struct Grid {
     rows: usize,
@@ -19,11 +19,19 @@ pub struct Grid {
 }
 
 impl Grid {
-    pub fn new(rows: usize, cols: usize, start: Option<Cell>, goal: Option<Cell>) -> Self {
+    pub fn new(mask: &Mask, start: Option<Cell>, goal: Option<Cell>) -> Self {
+        let rows = mask.num_rows();
+        let cols = mask.num_cols();
+
         let mut links = UnGraphMap::with_capacity(rows * cols, 0);
-        for row in 0..rows as isize {
-            for col in 0..cols as isize {
-                links.add_node(Cell { row, col });
+        for row in 0..rows {
+            for col in 0..cols {
+                if mask[row][col] {
+                    links.add_node(Cell {
+                        row: row as isize,
+                        col: col as isize,
+                    });
+                }
             }
         }
 
@@ -36,10 +44,10 @@ impl Grid {
         }
     }
 
-    pub fn rows(&self) -> usize {
+    pub fn num_rows(&self) -> usize {
         self.rows
     }
-    pub fn cols(&self) -> usize {
+    pub fn num_cols(&self) -> usize {
         self.cols
     }
 
@@ -50,12 +58,19 @@ impl Grid {
         self.goal = Some(start);
     }
 
-    pub fn iter_cells(rows: usize, cols: usize) -> impl Iterator<Item = Cell> {
-        (0..rows as isize).flat_map(move |row| (0..cols as isize).map(move |col| Cell { row, col }))
+    pub fn cells(&self) -> Vec<Cell> {
+        self.links.nodes().collect()
     }
 
-    pub fn iter_rows(rows: usize, cols: usize) -> impl Iterator<Item = impl Iterator<Item = Cell>> {
-        (0..rows as isize).map(move |row| (0..cols as isize).map(move |col| Cell { row, col }))
+    pub fn rows(&self) -> Vec<Vec<Cell>> {
+        (0..self.rows as isize)
+            .map(|r| {
+                self.links
+                    .nodes()
+                    .filter(|Cell { row, .. }| *row == r)
+                    .collect()
+            })
+            .collect()
     }
 
     // TODO: move these to cell?
@@ -100,18 +115,20 @@ impl Grid {
         self.links.contains_node(cell).then_some(cell)
     }
     pub fn get_random_cell(&self) -> Cell {
-        Cell {
-            row: rand::thread_rng().gen_range(0..self.rows as isize),
-            col: rand::thread_rng().gen_range(0..self.cols as isize),
-        }
+        self.links
+            .nodes()
+            .choose(&mut rand::thread_rng())
+            .expect("at least one cell in the grid")
     }
 
     pub fn size(&self) -> usize {
-        self.rows * self.cols
+        self.links.node_count()
     }
 
     pub fn dead_ends(&self) -> impl Iterator<Item = Cell> + '_ {
-        Self::iter_cells(self.rows, self.cols).filter(|cell| self.links(*cell).count() == 1)
+        self.cells()
+            .into_iter()
+            .filter(|cell| self.links(*cell).count() == 1)
     }
 
     pub fn distances_from(&self, cell: Cell) -> Distances {
@@ -155,7 +172,7 @@ impl Grid {
         let mut img = RgbImage::from_pixel(width + 1, height + 1, background);
 
         if let Some(distances) = self.distances() {
-            for cell in Self::iter_cells(self.rows, self.cols) {
+            for cell in self.cells() {
                 let color = background_for_cell(&distances, cell);
                 draw_filled_rect_mut(
                     &mut img,
@@ -169,7 +186,7 @@ impl Grid {
             }
         }
 
-        for cell in Self::iter_cells(self.rows, self.cols) {
+        for cell in self.cells() {
             let x1 = cell.col as f32 * cell_size as f32;
             let y1 = cell.row as f32 * cell_size as f32;
             let x2 = (cell.col + 1) as f32 * cell_size as f32;
@@ -246,9 +263,7 @@ impl fmt::Display for Grid {
                 (false, true, false, true) => '┘',
                 (false, false, true, true) => '│',
                 (false, false, false, false) => '┼',
-                (true, true, true, true) => {
-                    unreachable!("not possible in a perfect maze")
-                }
+                (true, true, true, true) => ' ',
             }
         };
 
@@ -269,8 +284,7 @@ impl fmt::Display for Grid {
             let mut bot = connector_at(row + 1, 0).to_string();
 
             for col in 0..self.cols as isize {
-                // TODO: may be none later
-                let cell = self.get(row, col).unwrap();
+                let cell = self.get(row, col).unwrap_or(Cell { row: -1, col: -1 });
 
                 let formatted_dist = distances
                     .as_ref()
