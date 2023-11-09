@@ -45,3 +45,7 @@ path = "demos/hunt_and_kill.rs"
 [[bin]]
 name = "deadend_counts"
 path = "demos/deadend_counts.rs"
+
+[[bin]]
+name = "recursive_backtracker"
+path = "demos/recursive_backtracker.rs"

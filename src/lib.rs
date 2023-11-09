@@ -14,6 +14,7 @@ mod cell;
 mod distances;
 mod grid;
 mod hunt_and_kill;
+mod recursive_backtracker;
 mod sidewinder;
 mod wilsons;
 
@@ -22,5 +23,6 @@ pub use binary_tree::binary_tree;
 pub use cell::Cell;
 pub use grid::Grid;
 pub use hunt_and_kill::hunt_and_kill;
+pub use recursive_backtracker::recursive_backtracker;
 pub use sidewinder::sidewinder;
 pub use wilsons::wilsons;

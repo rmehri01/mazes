@@ -5,6 +5,7 @@ fn main() {
         "aldous_broder",
         "wilsons",
         "hunt_and_kill",
+        "recursive_backtracker",
     ];
 
     const TRIES: usize = 100;
@@ -23,6 +24,7 @@ fn main() {
                     "aldous_broder" => mazes::aldous_broder,
                     "wilsons" => mazes::wilsons,
                     "hunt_and_kill" => mazes::hunt_and_kill,
+                    "recursive_backtracker" => mazes::recursive_backtracker,
                     _ => panic!("invalid generator"),
                 };
                 generator(&mut grid);
@@ -39,6 +41,6 @@ fn main() {
     println!("\nAverage dead-ends per {SIZE}x{SIZE} maze ({total_cells} cells):");
     for (name, avg) in averages {
         let percentage = avg * 100.0 / (SIZE * SIZE) as f32;
-        println!("{name:>14} : {avg:>5.1}/{total_cells} ({percentage:.1}%)");
+        println!("{name:>22} : {avg:>5.1}/{total_cells} ({percentage:.1}%)");
     }
 }
