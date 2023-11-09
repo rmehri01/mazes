@@ -6,6 +6,7 @@ use imageproc::{
     rect::Rect,
 };
 use petgraph::prelude::UnGraphMap;
+use rand::Rng;
 
 use crate::{cell::Cell, distances::Distances};
 
@@ -72,8 +73,13 @@ impl Grid {
         self.links.contains_edge(cell, other)
     }
 
-    pub fn neighbours(&self, cell: Cell) {
-        todo!()
+    pub fn neighbours(&self, cell: Cell) -> impl Iterator<Item = Cell> {
+        let north = self.north(cell);
+        let south = self.south(cell);
+        let west = self.west(cell);
+        let east = self.east(cell);
+
+        [north, south, west, east].into_iter().flatten()
     }
 
     pub fn north(&self, cell: Cell) -> Option<Cell> {
@@ -94,7 +100,10 @@ impl Grid {
         self.links.contains_node(cell).then_some(cell)
     }
     pub fn get_random_cell(&self) -> Cell {
-        todo!()
+        Cell {
+            row: rand::thread_rng().gen_range(0..self.rows as isize),
+            col: rand::thread_rng().gen_range(0..self.cols as isize),
+        }
     }
 
     pub fn size(&self) -> usize {

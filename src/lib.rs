@@ -8,12 +8,14 @@
     clippy::explicit_iter_loop
 )]
 
+mod aldous_broder;
 mod binary_tree;
 mod cell;
 mod distances;
 mod grid;
 mod sidewinder;
 
+pub use aldous_broder::aldous_broder;
 pub use binary_tree::binary_tree;
 pub use cell::Cell;
 pub use grid::Grid;
