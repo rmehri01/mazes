@@ -110,6 +110,10 @@ impl Grid {
         self.rows * self.cols
     }
 
+    pub fn dead_ends(&self) -> impl Iterator<Item = Cell> + '_ {
+        Self::iter_cells(self.rows, self.cols).filter(|cell| self.links(*cell).count() == 1)
+    }
+
     pub fn distances_from(&self, cell: Cell) -> Distances {
         let mut distances = Distances::new(cell);
         let mut frontier = vec![cell];

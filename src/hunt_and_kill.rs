@@ -11,9 +11,9 @@ pub fn hunt_and_kill(grid: &mut Grid) {
             .filter(|n| grid.links(*n).next().is_none());
 
         match unvisited_neighbours.choose(&mut rand::thread_rng()) {
-            Some(neighbor) => {
-                grid.link(cell, neighbor);
-                current = Some(neighbor);
+            Some(neighbour) => {
+                grid.link(cell, neighbour);
+                current = Some(neighbour);
             }
             None => {
                 current = Grid::iter_cells(grid.rows(), grid.cols()).find_map(|c| {
@@ -24,8 +24,8 @@ pub fn hunt_and_kill(grid: &mut Grid) {
 
                         visited_neighbours
                             .choose(&mut rand::thread_rng())
-                            .map(|neighbor| {
-                                grid.link(c, neighbor);
+                            .map(|neighbour| {
+                                grid.link(c, neighbour);
                                 c
                             })
                     } else {
