@@ -8,6 +8,7 @@ image = "0.24.7"
 imageproc = "0.23.0"
 petgraph = "0.6.4"
 rand = "0.8.5"
+rustc-hash = "1.1.0"
 
 [[bin]]
 name = "binary_tree"
@@ -16,3 +17,7 @@ path = "demos/binary_tree.rs"
 [[bin]]
 name = "sidewinder"
 path = "demos/sidewinder.rs"
+
+[[bin]]
+name = "dijkstra"
+path = "demos/dijkstra.rs"

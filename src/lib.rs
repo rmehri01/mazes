@@ -9,8 +9,12 @@
 )]
 
 mod binary_tree;
-pub use binary_tree::binary_tree;
-mod sidewinder;
-pub use sidewinder::sidewinder;
+mod cell;
+mod distances;
 mod grid;
+mod sidewinder;
+
+pub use binary_tree::binary_tree;
+pub use cell::Cell;
 pub use grid::Grid;
+pub use sidewinder::sidewinder;

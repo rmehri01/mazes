@@ -4,20 +4,18 @@ use image::{Rgb, RgbImage};
 use imageproc::drawing::draw_line_segment_mut;
 use petgraph::prelude::UnGraphMap;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Cell {
-    row: isize,
-    col: isize,
-}
+use crate::{cell::Cell, distances::Distances};
 
 pub struct Grid {
     rows: usize,
     cols: usize,
     links: UnGraphMap<Cell, ()>,
+    start: Option<Cell>,
+    end: Option<Cell>,
 }
 
 impl Grid {
-    pub fn new(rows: usize, cols: usize) -> Self {
+    pub fn new(rows: usize, cols: usize, start: Option<Cell>, end: Option<Cell>) -> Self {
         let mut links = UnGraphMap::with_capacity(rows * cols, 0);
         for row in 0..rows as isize {
             for col in 0..cols as isize {
@@ -25,7 +23,13 @@ impl Grid {
             }
         }
 
-        Self { rows, cols, links }
+        Self {
+            rows,
+            cols,
+            links,
+            start,
+            end,
+        }
     }
 
     pub fn rows(&self) -> usize {
@@ -33,6 +37,13 @@ impl Grid {
     }
     pub fn cols(&self) -> usize {
         self.cols
+    }
+
+    pub fn set_start(&mut self, start: Cell) {
+        self.start = Some(start);
+    }
+    pub fn set_end(&mut self, start: Cell) {
+        self.end = Some(start);
     }
 
     pub fn iter_cells(rows: usize, cols: usize) -> impl Iterator<Item = Cell> {
@@ -43,6 +54,7 @@ impl Grid {
         (0..rows as isize).map(move |row| (0..cols as isize).map(move |col| Cell { row, col }))
     }
 
+    // TODO: move these to cell?
     pub fn link(&mut self, cell: Cell, other: Cell) {
         self.links.add_edge(cell, other, ());
     }
@@ -50,8 +62,8 @@ impl Grid {
         self.links.remove_edge(cell, other);
     }
 
-    pub fn links(&self, cell: Cell) {
-        todo!()
+    pub fn links(&self, cell: Cell) -> impl Iterator<Item = Cell> + '_ {
+        self.links.neighbors(cell)
     }
     pub fn are_linked(&self, cell: Cell, other: Cell) -> bool {
         self.links.contains_edge(cell, other)
@@ -84,6 +96,28 @@ impl Grid {
 
     pub fn size(&self) -> usize {
         self.rows * self.cols
+    }
+
+    pub fn distances_from(&self, cell: Cell) -> Distances {
+        let mut distances = Distances::new(cell);
+        let mut frontier = vec![cell];
+
+        while !frontier.is_empty() {
+            let mut new_frontier = Vec::new();
+
+            for cell in frontier {
+                for linked in self.links(cell) {
+                    if distances.get(&linked).is_none() {
+                        distances.insert(linked, distances[cell] + 1);
+                        new_frontier.push(linked);
+                    }
+                }
+            }
+
+            frontier = new_frontier;
+        }
+
+        distances
     }
 
     pub fn save_png(&self, file_name: &str, cell_size: u32) {
@@ -170,6 +204,12 @@ impl fmt::Display for Grid {
             }
         };
 
+        let distances = match (self.start, self.end) {
+            (None, None) => None,
+            (None, Some(cell)) | (Some(cell), None) => Some(self.distances_from(cell)),
+            (Some(start), Some(end)) => Some(self.distances_from(start).path_to(end, self)),
+        };
+
         writeln!(
             f,
             "{}",
@@ -188,7 +228,11 @@ impl fmt::Display for Grid {
                 // TODO: may be none later
                 let cell = self.get(row, col).unwrap();
 
-                top.push_str("   ");
+                let formatted_dist = distances
+                    .as_ref()
+                    .and_then(|distances| distances.get(&cell))
+                    .map(|dist| format!("{:>3}", dist));
+                top.push_str(formatted_dist.as_deref().unwrap_or("   "));
                 let east_boundary = if self
                     .east(cell)
                     .map(|east| self.are_linked(cell, east))
