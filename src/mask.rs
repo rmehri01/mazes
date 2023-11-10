@@ -1,5 +1,7 @@
 use std::{fs, ops, path::Path};
 
+use image::Rgb;
+
 pub struct Mask {
     rows: usize,
     cols: usize,
@@ -25,6 +27,26 @@ impl Mask {
         Self {
             rows: bits.len(),
             cols: bits[0].len(),
+            bits,
+        }
+    }
+
+    pub fn from_image(path: impl AsRef<Path>) -> Self {
+        let image = image::open(path).expect("image should be found").to_rgb8();
+
+        let cols = image.width();
+        let rows = image.height();
+        let bits = (0..rows)
+            .map(|row| {
+                (0..cols)
+                    .map(|col| image.get_pixel(col, row) != &Rgb([0, 0, 0]))
+                    .collect()
+            })
+            .collect();
+
+        Self {
+            rows: rows as usize,
+            cols: cols as usize,
             bits,
         }
     }
