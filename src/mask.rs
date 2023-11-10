@@ -1,4 +1,4 @@
-use std::ops;
+use std::{fs, ops, path::Path};
 
 pub struct Mask {
     rows: usize,
@@ -8,10 +8,24 @@ pub struct Mask {
 
 impl Mask {
     pub fn new(rows: usize, cols: usize) -> Self {
-        Mask {
+        Self {
             rows,
             cols,
             bits: vec![vec![true; cols]; rows],
+        }
+    }
+
+    pub fn from_txt(path: impl AsRef<Path>) -> Self {
+        let file = fs::read_to_string(path).expect("file should be found");
+        let bits: Vec<Vec<bool>> = file
+            .lines()
+            .map(|line| line.chars().map(|c| c != 'X').collect())
+            .collect();
+
+        Self {
+            rows: bits.len(),
+            cols: bits[0].len(),
+            bits,
         }
     }
 

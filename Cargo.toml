@@ -53,3 +53,7 @@ path = "demos/recursive_backtracker.rs"
 [[bin]]
 name = "simple_mask"
 path = "demos/simple_mask.rs"
+
+[[bin]]
+name = "ascii_mask"
+path = "demos/ascii_mask.rs"
