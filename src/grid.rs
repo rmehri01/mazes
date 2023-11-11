@@ -9,7 +9,11 @@ use imageproc::{
 use petgraph::prelude::UnGraphMap;
 use rand::seq::IteratorRandom;
 
-use crate::{cell::Cell, distances::Distances, Mask};
+use crate::{
+    cell::{Cell, CellKind},
+    distances::Distances,
+    Mask,
+};
 
 pub struct Regular {
     rows: usize,
@@ -30,14 +34,31 @@ impl Masked {
     }
 }
 
-pub struct Polar;
+pub struct Polar {
+    rows: usize,
+}
 
-pub trait GridKind {
-    fn prepare_grid(&self) -> UnGraphMap<Cell, ()>;
+impl Polar {
+    pub fn new(rows: usize) -> Self {
+        Self { rows }
+    }
+}
+
+pub trait GridKind
+where
+    Self: Sized,
+{
+    type Cell: CellKind;
+
+    fn prepare_grid(&self) -> UnGraphMap<Self::Cell, ()>;
+    // TODO: impl on grid instead?
+    fn neighbours(grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell>;
 }
 
 impl GridKind for Regular {
-    fn prepare_grid(&self) -> UnGraphMap<Cell, ()> {
+    type Cell = Cell;
+
+    fn prepare_grid(&self) -> UnGraphMap<Self::Cell, ()> {
         let rows = self.rows;
         let cols = self.cols;
 
@@ -53,10 +74,21 @@ impl GridKind for Regular {
 
         links
     }
+
+    fn neighbours(grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell> {
+        let north = grid.north(cell);
+        let south = grid.south(cell);
+        let west = grid.west(cell);
+        let east = grid.east(cell);
+
+        [north, south, west, east].into_iter().flatten()
+    }
 }
 
 impl GridKind for Masked {
-    fn prepare_grid(&self) -> UnGraphMap<Cell, ()> {
+    type Cell = Cell;
+
+    fn prepare_grid(&self) -> UnGraphMap<Self::Cell, ()> {
         let mask = &self.0;
         let rows = mask.num_rows();
         let cols = mask.num_cols();
@@ -75,23 +107,72 @@ impl GridKind for Masked {
 
         links
     }
+
+    fn neighbours(grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell> {
+        let north = grid.north(cell);
+        let south = grid.south(cell);
+        let west = grid.west(cell);
+        let east = grid.east(cell);
+
+        [north, south, west, east].into_iter().flatten()
+    }
 }
 
 impl GridKind for Polar {
-    fn prepare_grid(&self) -> UnGraphMap<Cell, ()> {
-        todo!()
+    type Cell = Cell;
+
+    fn prepare_grid(&self) -> UnGraphMap<Self::Cell, ()> {
+        let rows = self.rows as f32;
+        let row_height = 1.0 / rows;
+
+        let mut links = UnGraphMap::new();
+        links.add_node(Cell { row: 0, col: 0 });
+
+        for row in 1..self.rows {
+            let radius = row as f32 / rows;
+            let circumference = 2.0 * f32::consts::PI * radius;
+
+            let previous_count = row_len(&links, row as isize - 1);
+            let estimated_cell_width = circumference / previous_count as f32;
+            let ratio = (estimated_cell_width / row_height).round() as usize;
+
+            let cells = previous_count * ratio;
+            for col in 0..cells {
+                links.add_node(Cell {
+                    row: row as isize,
+                    col: col as isize,
+                });
+            }
+        }
+
+        links
     }
+
+    fn neighbours(grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell> {
+        let clockwise = grid.clockwise(cell);
+        let counter_clockwise = grid.counter_clockwise(cell);
+        let inward = grid.inward(cell);
+
+        [clockwise, counter_clockwise, inward]
+            .into_iter()
+            .flatten()
+            .chain(grid.outward(cell))
+    }
+}
+
+fn row_len(links: &UnGraphMap<Cell, ()>, r: isize) -> usize {
+    links.nodes().filter(|Cell { row, .. }| *row == r).count()
 }
 
 pub struct Grid<K: GridKind> {
     kind: K,
-    links: UnGraphMap<Cell, ()>,
-    start: Option<Cell>,
-    goal: Option<Cell>,
+    links: UnGraphMap<K::Cell, ()>,
+    start: Option<K::Cell>,
+    goal: Option<K::Cell>,
 }
 
 impl<K: GridKind> Grid<K> {
-    pub fn new(kind: K, start: Option<Cell>, goal: Option<Cell>) -> Self {
+    pub fn new(kind: K, start: Option<K::Cell>, goal: Option<K::Cell>) -> Self {
         let links = kind.prepare_grid();
 
         Self {
@@ -102,59 +183,36 @@ impl<K: GridKind> Grid<K> {
         }
     }
 
-    pub fn set_start(&mut self, start: Cell) {
+    pub fn set_start(&mut self, start: K::Cell) {
         self.start = Some(start);
     }
-    pub fn set_goal(&mut self, start: Cell) {
+    pub fn set_goal(&mut self, start: K::Cell) {
         self.goal = Some(start);
     }
 
-    pub fn cells(&self) -> Vec<Cell> {
+    pub fn cells(&self) -> Vec<K::Cell> {
         self.links.nodes().collect()
     }
 
-    // TODO: move these to cell?
-    pub fn link(&mut self, cell: Cell, other: Cell) {
+    pub fn link(&mut self, cell: K::Cell, other: K::Cell) {
         self.links.add_edge(cell, other, ());
     }
-    pub fn unlink(&mut self, cell: Cell, other: Cell) {
+    pub fn unlink(&mut self, cell: K::Cell, other: K::Cell) {
         self.links.remove_edge(cell, other);
     }
 
-    pub fn links(&self, cell: Cell) -> impl Iterator<Item = Cell> + '_ {
+    pub fn links(&self, cell: K::Cell) -> impl Iterator<Item = K::Cell> + '_ {
         self.links.neighbors(cell)
     }
-    pub fn are_linked(&self, cell: Cell, other: Cell) -> bool {
+    pub fn are_linked(&self, cell: K::Cell, other: K::Cell) -> bool {
         self.links.contains_edge(cell, other)
     }
 
-    pub fn neighbours(&self, cell: Cell) -> impl Iterator<Item = Cell> {
-        let north = self.north(cell);
-        let south = self.south(cell);
-        let west = self.west(cell);
-        let east = self.east(cell);
-
-        [north, south, west, east].into_iter().flatten()
+    pub fn neighbours(&self, cell: K::Cell) -> impl Iterator<Item = K::Cell> + '_ {
+        K::neighbours(self, cell)
     }
 
-    pub fn north(&self, cell: Cell) -> Option<Cell> {
-        self.get(cell.row - 1, cell.col)
-    }
-    pub fn south(&self, cell: Cell) -> Option<Cell> {
-        self.get(cell.row + 1, cell.col)
-    }
-    pub fn west(&self, cell: Cell) -> Option<Cell> {
-        self.get(cell.row, cell.col - 1)
-    }
-    pub fn east(&self, cell: Cell) -> Option<Cell> {
-        self.get(cell.row, cell.col + 1)
-    }
-
-    pub fn get(&self, row: isize, col: isize) -> Option<Cell> {
-        let cell = Cell { row, col };
-        self.links.contains_node(cell).then_some(cell)
-    }
-    pub fn get_random_cell(&self) -> Cell {
+    pub fn get_random_cell(&self) -> K::Cell {
         self.links
             .nodes()
             .choose(&mut rand::thread_rng())
@@ -165,13 +223,13 @@ impl<K: GridKind> Grid<K> {
         self.links.node_count()
     }
 
-    pub fn dead_ends(&self) -> impl Iterator<Item = Cell> + '_ {
+    pub fn dead_ends(&self) -> impl Iterator<Item = K::Cell> + '_ {
         self.cells()
             .into_iter()
             .filter(|cell| self.links(*cell).count() == 1)
     }
 
-    pub fn distances_from(&self, cell: Cell) -> Distances {
+    pub fn distances_from(&self, cell: K::Cell) -> Distances<K> {
         let mut distances = Distances::new(cell);
         let mut frontier = vec![cell];
 
@@ -193,7 +251,7 @@ impl<K: GridKind> Grid<K> {
         distances
     }
 
-    fn distances(&self) -> Option<Distances> {
+    fn distances(&self) -> Option<Distances<K>> {
         match (self.start, self.goal) {
             (None, None) => None,
             (None, Some(cell)) | (Some(cell), None) => Some(self.distances_from(cell)),
@@ -201,7 +259,7 @@ impl<K: GridKind> Grid<K> {
         }
     }
 
-    fn background_for_cell(distances: &Distances, cell: Cell) -> Rgb<u8> {
+    fn background_for_cell(distances: &Distances<K>, cell: K::Cell) -> Rgb<u8> {
         let distance = distances[cell];
         let (_, max) = distances.max();
         let intensity = (max - distance) as f32 / max as f32;
@@ -243,6 +301,24 @@ macro_rules! impl_rectangular {
     ($($T:ty),+ $(,)?) => {
         $(
             impl Grid<$T> {
+                pub fn north(&self, cell: Cell) -> Option<Cell> {
+                    self.get(cell.row - 1, cell.col)
+                }
+                pub fn south(&self, cell: Cell) -> Option<Cell> {
+                    self.get(cell.row + 1, cell.col)
+                }
+                pub fn west(&self, cell: Cell) -> Option<Cell> {
+                    self.get(cell.row, cell.col - 1)
+                }
+                pub fn east(&self, cell: Cell) -> Option<Cell> {
+                    self.get(cell.row, cell.col + 1)
+                }
+
+                pub fn get(&self, row: isize, col: isize) -> Option<Cell> {
+                    let cell = Cell { row, col };
+                    self.links.contains_node(cell).then_some(cell)
+                }
+
                 pub fn save_png(&self, file_name: &str, cell_size: u32) {
                     let width = cell_size * self.num_cols() as u32;
                     let height = cell_size * self.num_rows() as u32;
@@ -407,54 +483,89 @@ macro_rules! impl_rectangular {
 impl_rectangular!(Regular, Masked);
 
 impl Grid<Polar> {
-    // pub fn save_polar_png(&self, file_name: &str, cell_size: u32) {
-    //     let img_size = 2 * self.rows as u32 * cell_size;
+    pub fn num_rows(&self) -> usize {
+        self.kind.rows
+    }
 
-    //     let background = Rgb([255, 255, 255]);
-    //     let wall = Rgb([0, 0, 0]);
+    pub fn clockwise(&self, cell: Cell) -> Option<Cell> {
+        self.get(cell.row, cell.col + 1)
+    }
+    pub fn counter_clockwise(&self, cell: Cell) -> Option<Cell> {
+        self.get(cell.row, cell.col - 1)
+    }
+    pub fn inward(&self, cell: Cell) -> Option<Cell> {
+        if cell.row == 0 {
+            return None;
+        }
 
-    //     let mut img = RgbImage::from_pixel(img_size + 1, img_size + 1, background);
-    //     let center = img_size as i32 / 2;
+        let ratio = row_len(&self.links, cell.row) / row_len(&self.links, cell.row - 1);
+        self.get(cell.row - 1, cell.col / ratio as isize)
+    }
+    pub fn outward(&self, cell: Cell) -> impl Iterator<Item = Cell> + '_ {
+        self.links
+            .nodes()
+            .filter(move |n| self.inward(*n).is_some_and(|c| c == cell))
+    }
 
-    //     for cell in self.cells() {
-    //         // TODO: is this cols?
-    //         let theta = 2.0 * f32::consts::PI / self.cols as f32;
-    //         let inner_radius = cell.row as f32 * cell_size as f32;
-    //         let outer_radius = (cell.row + 1) as f32 * cell_size as f32;
-    //         let theta_ccw = cell.col as f32 * theta;
-    //         let theta_cw = (cell.col + 1) as f32 * theta;
+    pub fn get(&self, row: isize, col: isize) -> Option<Cell> {
+        let cell = Cell {
+            row,
+            col: col % row_len(&self.links, row) as isize,
+        };
+        self.links.contains_node(cell).then_some(cell)
+    }
 
-    //         let ax = center as f32 + (inner_radius * theta_ccw.cos());
-    //         let ay = center as f32 + (inner_radius * theta_ccw.sin());
-    //         let cx = center as f32 + (inner_radius * theta_cw.cos());
-    //         let cy = center as f32 + (inner_radius * theta_cw.sin());
-    //         let dx = center as f32 + (outer_radius * theta_cw.cos());
-    //         let dy = center as f32 + (outer_radius * theta_cw.sin());
+    pub fn save_png(&self, file_name: &str, cell_size: u32) {
+        let img_size = 2 * self.num_rows() as u32 * cell_size;
 
-    //         if !self
-    //             .north(cell)
-    //             .map(|north| self.are_linked(cell, north))
-    //             .unwrap_or(false)
-    //         {
-    //             draw_line_segment_mut(&mut img, (ax, ay), (cx, cy), wall);
-    //         }
-    //         if !self
-    //             .east(cell)
-    //             .map(|east| self.are_linked(cell, east))
-    //             .unwrap_or(false)
-    //         {
-    //             draw_line_segment_mut(&mut img, (cx, cy), (dx, dy), wall);
-    //         }
-    //     }
+        let background = Rgb([255, 255, 255]);
+        let wall = Rgb([0, 0, 0]);
 
-    //     draw_hollow_circle_mut(
-    //         &mut img,
-    //         (center, center),
-    //         self.rows as i32 * cell_size as i32,
-    //         wall,
-    //     );
+        let mut img = RgbImage::from_pixel(img_size + 1, img_size + 1, background);
+        let center = img_size as i32 / 2;
 
-    //     img.save(format!("images/{file_name}.png"))
-    //         .expect("image to be saved");
-    // }
+        for cell in self.cells() {
+            if cell.row == 0 {
+                continue;
+            }
+
+            let theta = 2.0 * f32::consts::PI / row_len(&self.links, cell.row) as f32;
+            let inner_radius = cell.row as f32 * cell_size as f32;
+            let outer_radius = (cell.row + 1) as f32 * cell_size as f32;
+            let theta_ccw = cell.col as f32 * theta;
+            let theta_cw = (cell.col + 1) as f32 * theta;
+
+            let ax = center as f32 + (inner_radius * theta_ccw.cos());
+            let ay = center as f32 + (inner_radius * theta_ccw.sin());
+            let cx = center as f32 + (inner_radius * theta_cw.cos());
+            let cy = center as f32 + (inner_radius * theta_cw.sin());
+            let dx = center as f32 + (outer_radius * theta_cw.cos());
+            let dy = center as f32 + (outer_radius * theta_cw.sin());
+
+            if !self
+                .inward(cell)
+                .map(|north| self.are_linked(cell, north))
+                .unwrap_or(false)
+            {
+                draw_line_segment_mut(&mut img, (ax, ay), (cx, cy), wall);
+            }
+            if !self
+                .clockwise(cell)
+                .map(|east| self.are_linked(cell, east))
+                .unwrap_or(false)
+            {
+                draw_line_segment_mut(&mut img, (cx, cy), (dx, dy), wall);
+            }
+        }
+
+        draw_hollow_circle_mut(
+            &mut img,
+            (center, center),
+            self.num_rows() as i32 * cell_size as i32,
+            wall,
+        );
+
+        img.save(format!("images/{file_name}.png"))
+            .expect("image to be saved");
+    }
 }

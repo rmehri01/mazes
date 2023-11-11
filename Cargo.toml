@@ -63,5 +63,5 @@ name = "image_mask"
 path = "demos/image_mask.rs"
 
 [[bin]]
-name = "polar_grid"
-path = "demos/polar_grid.rs"
+name = "circle_maze"
+path = "demos/circle_maze.rs"

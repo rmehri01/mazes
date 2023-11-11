@@ -2,31 +2,31 @@ use std::ops;
 
 use rustc_hash::FxHashMap;
 
-use crate::{cell::Cell, grid::GridKind, Grid};
+use crate::{grid::GridKind, Grid};
 
-pub struct Distances {
-    root: Cell,
-    distances: FxHashMap<Cell, usize>,
+pub struct Distances<K: GridKind> {
+    root: K::Cell,
+    distances: FxHashMap<K::Cell, usize>,
 }
 
-impl Distances {
-    pub fn new(root: Cell) -> Self {
+impl<K: GridKind> Distances<K> {
+    pub fn new(root: K::Cell) -> Self {
         Self {
             root,
             distances: FxHashMap::from_iter([(root, 0)]),
         }
     }
 
-    pub fn get(&self, cell: &Cell) -> Option<usize> {
+    pub fn get(&self, cell: &K::Cell) -> Option<usize> {
         self.distances.get(cell).copied()
     }
 
-    pub fn insert(&mut self, cell: Cell, distance: usize) {
+    pub fn insert(&mut self, cell: K::Cell, distance: usize) {
         self.distances.insert(cell, distance);
     }
 
     // TODO: does this work
-    pub fn path_to(&self, goal: Cell, grid: &Grid<impl GridKind>) -> Self {
+    pub fn path_to(&self, goal: K::Cell, grid: &Grid<K>) -> Self {
         let mut current = goal;
 
         let mut breadcrumbs = Self::new(self.root);
@@ -44,7 +44,7 @@ impl Distances {
         breadcrumbs
     }
 
-    pub fn max(&self) -> (Cell, usize) {
+    pub fn max(&self) -> (K::Cell, usize) {
         self.distances
             .iter()
             .max_by_key(|(_, dist)| **dist)
@@ -53,10 +53,10 @@ impl Distances {
     }
 }
 
-impl ops::Index<Cell> for Distances {
+impl<K: GridKind> ops::Index<K::Cell> for Distances<K> {
     type Output = usize;
 
-    fn index(&self, index: Cell) -> &Self::Output {
+    fn index(&self, index: K::Cell) -> &Self::Output {
         &self.distances[&index]
     }
 }
