@@ -3,7 +3,11 @@ use std::f32;
 
 use image::{Rgb, RgbImage};
 use imageproc::{
-    drawing::{draw_filled_rect_mut, draw_hollow_circle_mut, draw_line_segment_mut},
+    drawing::{
+        draw_antialiased_line_segment_mut, draw_filled_rect_mut, draw_hollow_circle_mut,
+        draw_line_segment_mut,
+    },
+    pixelops,
     rect::Rect,
 };
 use petgraph::prelude::UnGraphMap;
@@ -535,26 +539,38 @@ impl Grid<Polar> {
             let theta_ccw = cell.col as f32 * theta;
             let theta_cw = (cell.col + 1) as f32 * theta;
 
-            let ax = center as f32 + (inner_radius * theta_ccw.cos());
-            let ay = center as f32 + (inner_radius * theta_ccw.sin());
-            let cx = center as f32 + (inner_radius * theta_cw.cos());
-            let cy = center as f32 + (inner_radius * theta_cw.sin());
-            let dx = center as f32 + (outer_radius * theta_cw.cos());
-            let dy = center as f32 + (outer_radius * theta_cw.sin());
+            let ax = center + (inner_radius * theta_ccw.cos()) as i32;
+            let ay = center + (inner_radius * theta_ccw.sin()) as i32;
+            let cx = center + (inner_radius * theta_cw.cos()) as i32;
+            let cy = center + (inner_radius * theta_cw.sin()) as i32;
+            let dx = center + (outer_radius * theta_cw.cos()) as i32;
+            let dy = center + (outer_radius * theta_cw.sin()) as i32;
 
             if !self
                 .inward(cell)
                 .map(|north| self.are_linked(cell, north))
                 .unwrap_or(false)
             {
-                draw_line_segment_mut(&mut img, (ax, ay), (cx, cy), wall);
+                draw_antialiased_line_segment_mut(
+                    &mut img,
+                    (ax, ay),
+                    (cx, cy),
+                    wall,
+                    pixelops::interpolate,
+                );
             }
             if !self
                 .clockwise(cell)
                 .map(|east| self.are_linked(cell, east))
                 .unwrap_or(false)
             {
-                draw_line_segment_mut(&mut img, (cx, cy), (dx, dy), wall);
+                draw_antialiased_line_segment_mut(
+                    &mut img,
+                    (cx, cy),
+                    (dx, dy),
+                    wall,
+                    pixelops::interpolate,
+                );
             }
         }
 
