@@ -1,8 +1,8 @@
 use rand::seq::IteratorRandom;
 
-use crate::grid::Grid;
+use crate::grid::{Grid, GridKind};
 
-pub fn hunt_and_kill(grid: &mut Grid) {
+pub fn hunt_and_kill(grid: &mut Grid<impl GridKind>) {
     let mut current = Some(grid.get_random_cell());
 
     while let Some(cell) = current {

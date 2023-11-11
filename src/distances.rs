@@ -2,7 +2,7 @@ use std::ops;
 
 use rustc_hash::FxHashMap;
 
-use crate::{cell::Cell, Grid};
+use crate::{cell::Cell, grid::GridKind, Grid};
 
 pub struct Distances {
     root: Cell,
@@ -25,7 +25,8 @@ impl Distances {
         self.distances.insert(cell, distance);
     }
 
-    pub fn path_to(&self, goal: Cell, grid: &Grid) -> Self {
+    // TODO: does this work
+    pub fn path_to(&self, goal: Cell, grid: &Grid<impl GridKind>) -> Self {
         let mut current = goal;
 
         let mut breadcrumbs = Self::new(self.root);

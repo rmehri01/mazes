@@ -1,8 +1,8 @@
 use rand::seq::SliceRandom;
 
-use crate::grid::Grid;
+use crate::grid::{Grid, Regular};
 
-pub fn sidewinder(grid: &mut Grid) {
+pub fn sidewinder(grid: &mut Grid<Regular>) {
     for row in grid.rows() {
         let mut run = Vec::new();
 

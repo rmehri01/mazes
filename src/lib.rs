@@ -22,7 +22,7 @@ mod wilsons;
 pub use aldous_broder::aldous_broder;
 pub use binary_tree::binary_tree;
 pub use cell::Cell;
-pub use grid::Grid;
+pub use grid::{Grid, GridKind, Masked, Polar, Regular};
 pub use hunt_and_kill::hunt_and_kill;
 pub use mask::Mask;
 pub use recursive_backtracker::recursive_backtracker;

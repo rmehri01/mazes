@@ -1,8 +1,8 @@
 use rand::seq::IteratorRandom;
 
-use crate::grid::Grid;
+use crate::grid::{Grid, GridKind};
 
-pub fn aldous_broder(grid: &mut Grid) {
+pub fn aldous_broder(grid: &mut Grid<impl GridKind>) {
     let mut cell = grid.get_random_cell();
     let mut unvisited = grid.size() - 1;
 

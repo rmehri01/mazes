@@ -2,8 +2,9 @@ fn main() {
     const ROWS: usize = 25;
     const COLS: usize = 25;
 
+    let kind = mazes::Regular::new(ROWS, COLS);
     let mut grid = mazes::Grid::new(
-        &mazes::Mask::new(ROWS, COLS),
+        kind,
         Some(mazes::Cell {
             row: ROWS as isize / 2,
             col: COLS as isize / 2,

@@ -1,7 +1,7 @@
-use crate::grid::Grid;
+use crate::grid::{Grid, Regular};
 
 // TODO: should this be part of grid?
-pub fn binary_tree(grid: &mut Grid) {
+pub fn binary_tree(grid: &mut Grid<Regular>) {
     for cell in grid.cells() {
         match (grid.north(cell), grid.east(cell)) {
             (None, None) => {}

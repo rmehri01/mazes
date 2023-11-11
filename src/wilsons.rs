@@ -3,9 +3,9 @@ use rand::{
     Rng,
 };
 
-use crate::grid::Grid;
+use crate::grid::{Grid, GridKind};
 
-pub fn wilsons(grid: &mut Grid) {
+pub fn wilsons(grid: &mut Grid<impl GridKind>) {
     let mut unvisited = grid.cells();
 
     let first_idx = rand::thread_rng().gen_range(0..unvisited.len());

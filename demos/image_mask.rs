@@ -1,6 +1,7 @@
 fn main() {
     let mask = mazes::Mask::from_image("masks/image.png");
-    let mut grid = mazes::Grid::new(&mask, None, None);
+    let kind = mazes::Masked::new(mask);
+    let mut grid = mazes::Grid::new(kind, None, None);
     mazes::recursive_backtracker(&mut grid);
 
     println!("{grid}");

@@ -6,7 +6,8 @@ fn main() {
     mask[2][2] = false;
     mask[4][4] = false;
 
-    let mut grid = mazes::Grid::new(&mask, None, None);
+    let kind = mazes::Masked::new(mask);
+    let mut grid = mazes::Grid::new(kind, None, None);
     mazes::recursive_backtracker(&mut grid);
     println!("{grid}");
 }

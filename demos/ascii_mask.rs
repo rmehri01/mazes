@@ -1,6 +1,7 @@
 fn main() {
     let mask = mazes::Mask::from_txt("masks/ascii.txt");
-    let mut grid = mazes::Grid::new(&mask, None, None);
+    let kind = mazes::Masked::new(mask);
+    let mut grid = mazes::Grid::new(kind, None, None);
     mazes::recursive_backtracker(&mut grid);
 
     println!("{grid}");
