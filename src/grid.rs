@@ -5,13 +5,15 @@ use image::{Rgb, RgbImage};
 use imageproc::{
     drawing::{
         draw_antialiased_line_segment_mut, draw_filled_rect_mut, draw_hollow_circle_mut,
-        draw_line_segment_mut,
+        draw_line_segment_mut, draw_polygon_mut,
     },
     pixelops,
+    point::Point,
     rect::Rect,
 };
 use petgraph::prelude::UnGraphMap;
 use rand::seq::IteratorRandom;
+use rustc_hash::FxHashMap;
 
 use crate::{
     cell::{Cell, CellKind},
@@ -55,7 +57,6 @@ where
     type Cell: CellKind;
 
     fn prepare_grid(&self) -> UnGraphMap<Self::Cell, ()>;
-    // TODO: impl on grid instead?
     fn neighbours(grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell>;
 }
 
@@ -520,6 +521,13 @@ impl Grid<Polar> {
     }
 
     pub fn save_png(&self, file_name: &str, cell_size: u32) {
+        struct CellCoords {
+            a: (i32, i32),
+            b: (i32, i32),
+            c: (i32, i32),
+            d: (i32, i32),
+        }
+
         let img_size = 2 * self.num_rows() as u32 * cell_size;
 
         let background = Rgb([255, 255, 255]);
@@ -528,6 +536,7 @@ impl Grid<Polar> {
         let mut img = RgbImage::from_pixel(img_size + 1, img_size + 1, background);
         let center = img_size as i32 / 2;
 
+        let mut coord_map = FxHashMap::default();
         for cell in self.cells() {
             if cell.row == 0 {
                 continue;
@@ -541,10 +550,86 @@ impl Grid<Polar> {
 
             let ax = center + (inner_radius * theta_ccw.cos()) as i32;
             let ay = center + (inner_radius * theta_ccw.sin()) as i32;
+            let bx = center + (outer_radius * theta_ccw.cos()) as i32;
+            let by = center + (outer_radius * theta_ccw.sin()) as i32;
             let cx = center + (inner_radius * theta_cw.cos()) as i32;
             let cy = center + (inner_radius * theta_cw.sin()) as i32;
             let dx = center + (outer_radius * theta_cw.cos()) as i32;
             let dy = center + (outer_radius * theta_cw.sin()) as i32;
+
+            coord_map.insert(
+                cell,
+                CellCoords {
+                    a: (ax, ay),
+                    b: (bx, by),
+                    c: (cx, cy),
+                    d: (dx, dy),
+                },
+            );
+        }
+
+        if let Some(distances) = self.distances() {
+            for cell in self.cells() {
+                let color = Self::background_for_cell(&distances, cell);
+
+                if cell.row == 0 {
+                    let poly = self
+                        .outward(cell)
+                        .flat_map(|c| {
+                            let CellCoords {
+                                a: (out_ax, out_ay),
+                                c: (out_cx, out_cy),
+                                ..
+                            } = coord_map[&c];
+
+                            [Point::new(out_ax, out_ay), Point::new(out_cx, out_cy)]
+                        })
+                        .skip(1) // polygon needs to be open
+                        .collect::<Vec<_>>();
+                    draw_polygon_mut(&mut img, &poly, color);
+                } else {
+                    let CellCoords {
+                        a: (ax, ay),
+                        b: (bx, by),
+                        c: (cx, cy),
+                        d: (dx, dy),
+                    } = coord_map[&cell];
+
+                    let poly = match self.outward(cell).next() {
+                        Some(out) => {
+                            let (out_cx, out_cy) = coord_map[&out].c;
+
+                            vec![
+                                Point::new(cx, cy),
+                                Point::new(dx, dy),
+                                Point::new(out_cx, out_cy),
+                                Point::new(bx, by),
+                                Point::new(ax, ay),
+                            ]
+                        }
+                        None => vec![
+                            Point::new(cx, cy),
+                            Point::new(dx, dy),
+                            Point::new(bx, by),
+                            Point::new(ax, ay),
+                        ],
+                    };
+                    draw_polygon_mut(&mut img, &poly, color);
+                }
+            }
+        }
+
+        for cell in self.cells() {
+            if cell.row == 0 {
+                continue;
+            }
+
+            let CellCoords {
+                a: (ax, ay),
+                b: _,
+                c: (cx, cy),
+                d: (dx, dy),
+            } = coord_map[&cell];
 
             if !self
                 .inward(cell)
