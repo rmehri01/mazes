@@ -69,3 +69,7 @@ path = "demos/circle_maze.rs"
 [[bin]]
 name = "hex_maze"
 path = "demos/hex_maze.rs"
+
+[[bin]]
+name = "triangle_maze"
+path = "demos/triangle_maze.rs"

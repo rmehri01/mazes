@@ -18,7 +18,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     cell::Cell,
     distances::Distances,
-    kind::{Hex, Kind, Masked, Polar, Regular},
+    kind::{Hex, Kind, Masked, Polar, Regular, Triangle},
 };
 
 pub struct Grid<K: Kind> {
@@ -489,7 +489,7 @@ impl Grid<Polar> {
 
             if !self
                 .inward(cell)
-                .map(|north| self.are_linked(cell, north))
+                .map(|inward| self.are_linked(cell, inward))
                 .unwrap_or(false)
             {
                 draw_antialiased_line_segment_mut(
@@ -502,7 +502,7 @@ impl Grid<Polar> {
             }
             if !self
                 .clockwise(cell)
-                .map(|east| self.are_linked(cell, east))
+                .map(|clockwise| self.are_linked(cell, clockwise))
                 .unwrap_or(false)
             {
                 draw_antialiased_line_segment_mut(
@@ -688,7 +688,7 @@ impl Grid<Hex> {
 
             if !self
                 .north_east(cell)
-                .map(|east| self.are_linked(cell, east))
+                .map(|north_east| self.are_linked(cell, north_east))
                 .unwrap_or(false)
             {
                 draw_antialiased_line_segment_mut(
@@ -701,7 +701,7 @@ impl Grid<Hex> {
             }
             if !self
                 .south_east(cell)
-                .map(|east| self.are_linked(cell, east))
+                .map(|south_east| self.are_linked(cell, south_east))
                 .unwrap_or(false)
             {
                 draw_antialiased_line_segment_mut(
@@ -714,13 +714,155 @@ impl Grid<Hex> {
             }
             if !self
                 .south(cell)
-                .map(|east| self.are_linked(cell, east))
+                .map(|south| self.are_linked(cell, south))
                 .unwrap_or(false)
             {
                 draw_antialiased_line_segment_mut(
                     &mut img,
                     (x_ne, y_s),
                     (x_nw, y_s),
+                    wall,
+                    pixelops::interpolate,
+                );
+            }
+        }
+
+        img.save(format!("images/{file_name}.png"))
+            .expect("image to be saved");
+    }
+}
+
+impl Grid<Triangle> {
+    pub fn num_rows(&self) -> usize {
+        self.kind.rows
+    }
+    pub fn num_cols(&self) -> usize {
+        self.kind.cols
+    }
+
+    pub fn north(&self, cell: Cell) -> Option<Cell> {
+        if Self::is_upright(cell) {
+            return None;
+        }
+
+        self.get(cell.row - 1, cell.col)
+    }
+    pub fn south(&self, cell: Cell) -> Option<Cell> {
+        if !Self::is_upright(cell) {
+            return None;
+        }
+
+        self.get(cell.row + 1, cell.col)
+    }
+    pub fn west(&self, cell: Cell) -> Option<Cell> {
+        self.get(cell.row, cell.col - 1)
+    }
+    pub fn east(&self, cell: Cell) -> Option<Cell> {
+        self.get(cell.row, cell.col + 1)
+    }
+
+    fn is_upright(cell: Cell) -> bool {
+        (cell.row + cell.col) % 2 == 0
+    }
+
+    pub fn get(&self, row: isize, col: isize) -> Option<Cell> {
+        let cell = Cell { row, col };
+        self.links.contains_node(cell).then_some(cell)
+    }
+
+    pub fn save_png(&self, file_name: &str, cell_size: u32) {
+        let cell_size = cell_size as f32;
+
+        let half_width = cell_size / 2.0;
+        let height = cell_size * 3.0_f32.sqrt() / 2.0;
+        let half_height = height / 2.0;
+
+        let img_width = (cell_size * (self.num_cols() + 1) as f32 / 2.0) as u32;
+        let img_height = (height * self.num_rows() as f32) as u32;
+
+        let background = Rgb([255, 255, 255]);
+        let wall = Rgb([0, 0, 0]);
+
+        let mut img = RgbImage::from_pixel(img_width + 1, img_height + 1, background);
+
+        if let Some(distances) = self.distances() {
+            for cell in self.cells() {
+                if let Some(color) = Self::background_for_cell(&distances, cell) {
+                    let cx = half_width + cell.col as f32 * half_width;
+                    let cy = half_height + cell.row as f32 * height;
+
+                    let west_x = (cx - half_width) as i32;
+                    let mid_x = cx as i32;
+                    let east_x = (cx + half_width) as i32;
+
+                    let (base_y, apex_y) = if Self::is_upright(cell) {
+                        ((cy + half_height) as i32, (cy - half_height) as i32)
+                    } else {
+                        ((cy - half_height) as i32, (cy + half_height) as i32)
+                    };
+
+                    draw_polygon_mut(
+                        &mut img,
+                        &[
+                            Point::new(west_x, base_y),
+                            Point::new(mid_x, apex_y),
+                            Point::new(east_x, base_y),
+                        ],
+                        color,
+                    );
+                }
+            }
+        }
+
+        for cell in self.cells() {
+            let cx = half_width + cell.col as f32 * half_width;
+            let cy = half_height + cell.row as f32 * height;
+
+            let west_x = (cx - half_width) as i32;
+            let mid_x = cx as i32;
+            let east_x = (cx + half_width) as i32;
+
+            let (base_y, apex_y) = if Self::is_upright(cell) {
+                ((cy + half_height) as i32, (cy - half_height) as i32)
+            } else {
+                ((cy - half_height) as i32, (cy + half_height) as i32)
+            };
+
+            if self.west(cell).is_none() {
+                draw_antialiased_line_segment_mut(
+                    &mut img,
+                    (west_x, base_y),
+                    (mid_x, apex_y),
+                    wall,
+                    pixelops::interpolate,
+                );
+            }
+
+            if !self
+                .east(cell)
+                .map(|east| self.are_linked(cell, east))
+                .unwrap_or(false)
+            {
+                draw_antialiased_line_segment_mut(
+                    &mut img,
+                    (east_x, base_y),
+                    (mid_x, apex_y),
+                    wall,
+                    pixelops::interpolate,
+                );
+            }
+
+            let no_south = Self::is_upright(cell) && self.south(cell).is_none();
+            let not_linked = !Self::is_upright(cell)
+                && !self
+                    .north(cell)
+                    .map(|north| self.are_linked(cell, north))
+                    .unwrap_or(false);
+            if no_south || not_linked {
+                draw_antialiased_line_segment_mut(
+                    &mut img,
+                    (east_x, base_y),
+                    (west_x, base_y),
                     wall,
                     pixelops::interpolate,
                 );

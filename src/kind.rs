@@ -48,6 +48,17 @@ impl Hex {
     }
 }
 
+pub struct Triangle {
+    pub rows: usize,
+    pub cols: usize,
+}
+
+impl Triangle {
+    pub fn new(rows: usize, cols: usize) -> Self {
+        Self { rows, cols }
+    }
+}
+
 pub trait Kind
 where
     Self: Sized,
@@ -194,5 +205,35 @@ impl Kind for Hex {
         [north_west, north, north_east, south_west, south, south_east]
             .into_iter()
             .flatten()
+    }
+}
+
+impl Kind for Triangle {
+    type Cell = Cell;
+
+    fn prepare_grid(&self) -> UnGraphMap<Self::Cell, ()> {
+        let rows = self.rows;
+        let cols = self.cols;
+
+        let mut links = UnGraphMap::with_capacity(rows * cols, 0);
+        for row in 0..rows {
+            for col in 0..cols {
+                links.add_node(Cell {
+                    row: row as isize,
+                    col: col as isize,
+                });
+            }
+        }
+
+        links
+    }
+
+    fn neighbours(grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell> {
+        let north = grid.north(cell);
+        let south = grid.south(cell);
+        let west = grid.west(cell);
+        let east = grid.east(cell);
+
+        [north, south, west, east].into_iter().flatten()
     }
 }
