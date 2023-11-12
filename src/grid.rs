@@ -507,10 +507,13 @@ impl Grid<Polar> {
         let ratio = row_len(&self.links, cell.row) / row_len(&self.links, cell.row - 1);
         self.get(cell.row - 1, cell.col / ratio as isize)
     }
-    pub fn outward(&self, cell: Cell) -> impl Iterator<Item = Cell> + '_ {
-        self.links
-            .nodes()
-            .filter(move |n| self.inward(*n).is_some_and(|c| c == cell))
+    pub fn outward(&self, cell: Cell) -> impl Iterator<Item = Cell> {
+        let ratio = (row_len(&self.links, cell.row + 1) / row_len(&self.links, cell.row)) as isize;
+
+        (cell.col * ratio..cell.col * ratio + ratio).map(move |col| Cell {
+            row: cell.row + 1,
+            col,
+        })
     }
 
     pub fn get(&self, row: isize, col: isize) -> Option<Cell> {
