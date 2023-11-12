@@ -264,13 +264,13 @@ impl<K: GridKind> Grid<K> {
         }
     }
 
-    fn background_for_cell(distances: &Distances<K>, cell: K::Cell) -> Rgb<u8> {
-        let distance = distances[cell];
+    fn background_for_cell(distances: &Distances<K>, cell: K::Cell) -> Option<Rgb<u8>> {
+        let distance = distances.get(&cell)?;
         let (_, max) = distances.max();
         let intensity = (max - distance) as f32 / max as f32;
         let dark = (255.0 * intensity).round() as u8;
         let bright = 128 + (127.0 * intensity) as u8;
-        Rgb([dark, bright, dark])
+        Some(Rgb([dark, bright, dark]))
     }
 }
 
@@ -335,16 +335,17 @@ macro_rules! impl_rectangular {
 
                     if let Some(distances) = self.distances() {
                         for cell in self.cells() {
-                            let color = Self::background_for_cell(&distances, cell);
-                            draw_filled_rect_mut(
-                                &mut img,
-                                Rect::at(
-                                    cell.col as i32 * cell_size as i32,
-                                    cell.row as i32 * cell_size as i32,
-                                )
-                                .of_size(cell_size, cell_size),
-                                color,
-                            );
+                            if let Some(color) = Self::background_for_cell(&distances, cell) {
+                                draw_filled_rect_mut(
+                                    &mut img,
+                                    Rect::at(
+                                        cell.col as i32 * cell_size as i32,
+                                        cell.row as i32 * cell_size as i32,
+                                    )
+                                    .of_size(cell_size, cell_size),
+                                    color,
+                                );
+                            }
                         }
                     }
 
@@ -570,51 +571,51 @@ impl Grid<Polar> {
 
         if let Some(distances) = self.distances() {
             for cell in self.cells() {
-                let color = Self::background_for_cell(&distances, cell);
+                if let Some(color) = Self::background_for_cell(&distances, cell) {
+                    if cell.row == 0 {
+                        let poly = self
+                            .outward(cell)
+                            .flat_map(|c| {
+                                let CellCoords {
+                                    a: (out_ax, out_ay),
+                                    c: (out_cx, out_cy),
+                                    ..
+                                } = coord_map[&c];
 
-                if cell.row == 0 {
-                    let poly = self
-                        .outward(cell)
-                        .flat_map(|c| {
-                            let CellCoords {
-                                a: (out_ax, out_ay),
-                                c: (out_cx, out_cy),
-                                ..
-                            } = coord_map[&c];
+                                [Point::new(out_ax, out_ay), Point::new(out_cx, out_cy)]
+                            })
+                            .skip(1) // polygon needs to be open
+                            .collect::<Vec<_>>();
+                        draw_polygon_mut(&mut img, &poly, color);
+                    } else {
+                        let CellCoords {
+                            a: (ax, ay),
+                            b: (bx, by),
+                            c: (cx, cy),
+                            d: (dx, dy),
+                        } = coord_map[&cell];
 
-                            [Point::new(out_ax, out_ay), Point::new(out_cx, out_cy)]
-                        })
-                        .skip(1) // polygon needs to be open
-                        .collect::<Vec<_>>();
-                    draw_polygon_mut(&mut img, &poly, color);
-                } else {
-                    let CellCoords {
-                        a: (ax, ay),
-                        b: (bx, by),
-                        c: (cx, cy),
-                        d: (dx, dy),
-                    } = coord_map[&cell];
+                        let poly = match self.outward(cell).next() {
+                            Some(out) => {
+                                let (out_cx, out_cy) = coord_map[&out].c;
 
-                    let poly = match self.outward(cell).next() {
-                        Some(out) => {
-                            let (out_cx, out_cy) = coord_map[&out].c;
-
-                            vec![
+                                vec![
+                                    Point::new(cx, cy),
+                                    Point::new(dx, dy),
+                                    Point::new(out_cx, out_cy),
+                                    Point::new(bx, by),
+                                    Point::new(ax, ay),
+                                ]
+                            }
+                            None => vec![
                                 Point::new(cx, cy),
                                 Point::new(dx, dy),
-                                Point::new(out_cx, out_cy),
                                 Point::new(bx, by),
                                 Point::new(ax, ay),
-                            ]
-                        }
-                        None => vec![
-                            Point::new(cx, cy),
-                            Point::new(dx, dy),
-                            Point::new(bx, by),
-                            Point::new(ax, ay),
-                        ],
-                    };
-                    draw_polygon_mut(&mut img, &poly, color);
+                            ],
+                        };
+                        draw_polygon_mut(&mut img, &poly, color);
+                    }
                 }
             }
         }
