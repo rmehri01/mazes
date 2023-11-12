@@ -1,8 +1,8 @@
 use rand::seq::IteratorRandom;
 
-use crate::grid::{Grid, GridKind};
+use crate::{grid::Grid, kind::Kind};
 
-impl<K: GridKind> Grid<K> {
+impl<K: Kind> Grid<K> {
     pub fn recursive_backtracker(mut self) -> Self {
         let mut stack = vec![self.get_random_cell()];
 

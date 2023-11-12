@@ -1,6 +1,8 @@
+use mazes::kind;
+
 // TODO: might want to split into generators and solvers
 fn main() {
-    let kind = mazes::Regular::new(16, 16);
+    let kind = kind::Regular::new(16, 16);
     let mut grid = mazes::Grid::new(kind, Some(mazes::Cell { row: 0, col: 0 }), None).binary_tree();
     println!("{grid}");
 

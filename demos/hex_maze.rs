@@ -1,5 +1,7 @@
+use mazes::kind;
+
 fn main() {
-    let kind = mazes::Hex::new(20, 20);
+    let kind = kind::Hex::new(20, 20);
     let mut grid = mazes::Grid::new(kind, None, None).sidewinder();
     grid.save_png("hex_maze", 25);
 

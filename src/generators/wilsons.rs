@@ -3,9 +3,9 @@ use rand::{
     Rng,
 };
 
-use crate::grid::{Grid, GridKind};
+use crate::{grid::Grid, kind::Kind};
 
-impl<K: GridKind> Grid<K> {
+impl<K: Kind> Grid<K> {
     pub fn wilsons(mut self) -> Self {
         let mut unvisited = self.cells();
 

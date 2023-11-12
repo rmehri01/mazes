@@ -1,8 +1,10 @@
+use mazes::kind;
+
 fn main() {
     const ROWS: usize = 25;
     const COLS: usize = 25;
 
-    let kind = mazes::Regular::new(ROWS, COLS);
+    let kind = kind::Regular::new(ROWS, COLS);
     let grid = mazes::Grid::new(
         kind,
         Some(mazes::Cell {

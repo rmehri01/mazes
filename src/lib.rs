@@ -8,17 +8,13 @@
     clippy::explicit_iter_loop
 )]
 
-mod aldous_broder;
-mod binary_tree;
 mod cell;
 mod distances;
+mod generators;
 mod grid;
-mod hunt_and_kill;
+pub mod kind;
 mod mask;
-mod recursive_backtracker;
-mod sidewinder;
-mod wilsons;
 
 pub use cell::Cell;
-pub use grid::{Grid, GridKind, Hex, Masked, Polar, Regular};
+pub use grid::Grid;
 pub use mask::Mask;

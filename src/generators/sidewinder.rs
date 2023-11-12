@@ -1,8 +1,8 @@
 use rand::seq::SliceRandom;
 
 use crate::{
-    grid::{Grid, Regular},
-    Hex,
+    grid::Grid,
+    kind::{Hex, Regular},
 };
 
 impl Grid<Regular> {

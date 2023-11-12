@@ -2,14 +2,14 @@ use std::ops;
 
 use rustc_hash::FxHashMap;
 
-use crate::{grid::GridKind, Grid};
+use crate::{grid::Grid, kind::Kind};
 
-pub struct Distances<K: GridKind> {
+pub struct Distances<K: Kind> {
     root: K::Cell,
     distances: FxHashMap<K::Cell, usize>,
 }
 
-impl<K: GridKind> Distances<K> {
+impl<K: Kind> Distances<K> {
     pub fn new(root: K::Cell) -> Self {
         Self {
             root,
@@ -53,7 +53,7 @@ impl<K: GridKind> Distances<K> {
     }
 }
 
-impl<K: GridKind> ops::Index<K::Cell> for Distances<K> {
+impl<K: Kind> ops::Index<K::Cell> for Distances<K> {
     type Output = usize;
 
     fn index(&self, index: K::Cell) -> &Self::Output {

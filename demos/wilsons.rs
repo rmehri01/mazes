@@ -1,5 +1,7 @@
+use mazes::kind;
+
 fn main() {
-    let kind = mazes::Regular::new(25, 25);
+    let kind = kind::Regular::new(25, 25);
     let mut grid = mazes::Grid::new(kind, None, None).wilsons();
     println!("{grid}");
     grid.save_png("wilsons", 25);

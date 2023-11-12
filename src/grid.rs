@@ -16,212 +16,19 @@ use rand::seq::IteratorRandom;
 use rustc_hash::FxHashMap;
 
 use crate::{
-    cell::{Cell, CellKind},
+    cell::Cell,
     distances::Distances,
-    Mask,
+    kind::{Hex, Kind, Masked, Polar, Regular},
 };
 
-pub struct Regular {
-    rows: usize,
-    cols: usize,
-}
-
-impl Regular {
-    pub fn new(rows: usize, cols: usize) -> Self {
-        Self { rows, cols }
-    }
-}
-
-pub struct Masked(Mask);
-
-impl Masked {
-    pub fn new(mask: Mask) -> Self {
-        Self(mask)
-    }
-}
-
-pub struct Polar {
-    rows: usize,
-}
-
-impl Polar {
-    pub fn new(rows: usize) -> Self {
-        Self { rows }
-    }
-}
-
-pub struct Hex {
-    rows: usize,
-    cols: usize,
-}
-
-impl Hex {
-    pub fn new(rows: usize, cols: usize) -> Self {
-        Self { rows, cols }
-    }
-}
-
-pub trait GridKind
-where
-    Self: Sized,
-{
-    type Cell: CellKind;
-
-    fn prepare_grid(&self) -> UnGraphMap<Self::Cell, ()>;
-    fn neighbours(grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell>;
-}
-
-impl GridKind for Regular {
-    type Cell = Cell;
-
-    fn prepare_grid(&self) -> UnGraphMap<Self::Cell, ()> {
-        let rows = self.rows;
-        let cols = self.cols;
-
-        let mut links = UnGraphMap::with_capacity(rows * cols, 0);
-        for row in 0..rows {
-            for col in 0..cols {
-                links.add_node(Cell {
-                    row: row as isize,
-                    col: col as isize,
-                });
-            }
-        }
-
-        links
-    }
-
-    fn neighbours(grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell> {
-        let north = grid.north(cell);
-        let south = grid.south(cell);
-        let west = grid.west(cell);
-        let east = grid.east(cell);
-
-        [north, south, west, east].into_iter().flatten()
-    }
-}
-
-impl GridKind for Masked {
-    type Cell = Cell;
-
-    fn prepare_grid(&self) -> UnGraphMap<Self::Cell, ()> {
-        let mask = &self.0;
-        let rows = mask.num_rows();
-        let cols = mask.num_cols();
-
-        let mut links = UnGraphMap::with_capacity(rows * cols, 0);
-        for row in 0..rows {
-            for col in 0..cols {
-                if mask[row][col] {
-                    links.add_node(Cell {
-                        row: row as isize,
-                        col: col as isize,
-                    });
-                }
-            }
-        }
-
-        links
-    }
-
-    fn neighbours(grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell> {
-        let north = grid.north(cell);
-        let south = grid.south(cell);
-        let west = grid.west(cell);
-        let east = grid.east(cell);
-
-        [north, south, west, east].into_iter().flatten()
-    }
-}
-
-impl GridKind for Polar {
-    type Cell = Cell;
-
-    fn prepare_grid(&self) -> UnGraphMap<Self::Cell, ()> {
-        let rows = self.rows as f32;
-        let row_height = 1.0 / rows;
-
-        let mut links = UnGraphMap::new();
-        links.add_node(Cell { row: 0, col: 0 });
-
-        for row in 1..self.rows {
-            let radius = row as f32 / rows;
-            let circumference = 2.0 * f32::consts::PI * radius;
-
-            let previous_count = row_len(&links, row as isize - 1);
-            let estimated_cell_width = circumference / previous_count as f32;
-            let ratio = (estimated_cell_width / row_height).round() as usize;
-
-            let cells = previous_count * ratio;
-            for col in 0..cells {
-                links.add_node(Cell {
-                    row: row as isize,
-                    col: col as isize,
-                });
-            }
-        }
-
-        links
-    }
-
-    fn neighbours(grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell> {
-        let clockwise = grid.clockwise(cell);
-        let counter_clockwise = grid.counter_clockwise(cell);
-        let inward = grid.inward(cell);
-
-        [clockwise, counter_clockwise, inward]
-            .into_iter()
-            .flatten()
-            .chain(grid.outward(cell))
-    }
-}
-
-impl GridKind for Hex {
-    type Cell = Cell;
-
-    fn prepare_grid(&self) -> UnGraphMap<Self::Cell, ()> {
-        let rows = self.rows;
-        let cols = self.cols;
-
-        let mut links = UnGraphMap::with_capacity(rows * cols, 0);
-        for row in 0..rows {
-            for col in 0..cols {
-                links.add_node(Cell {
-                    row: row as isize,
-                    col: col as isize,
-                });
-            }
-        }
-
-        links
-    }
-
-    fn neighbours(grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell> {
-        let north_west = grid.north_west(cell);
-        let north = grid.north(cell);
-        let north_east = grid.north_east(cell);
-        let south_west = grid.south_west(cell);
-        let south = grid.south(cell);
-        let south_east = grid.south_east(cell);
-
-        [north_west, north, north_east, south_west, south, south_east]
-            .into_iter()
-            .flatten()
-    }
-}
-
-fn row_len(links: &UnGraphMap<Cell, ()>, r: isize) -> usize {
-    links.nodes().filter(|Cell { row, .. }| *row == r).count()
-}
-
-pub struct Grid<K: GridKind> {
+pub struct Grid<K: Kind> {
     kind: K,
     links: UnGraphMap<K::Cell, ()>,
     start: Option<K::Cell>,
     goal: Option<K::Cell>,
 }
 
-impl<K: GridKind> Grid<K> {
+impl<K: Kind> Grid<K> {
     pub fn new(kind: K, start: Option<K::Cell>, goal: Option<K::Cell>) -> Self {
         let links = kind.prepare_grid();
 
@@ -887,4 +694,8 @@ impl Grid<Hex> {
         img.save(format!("images/{file_name}.png"))
             .expect("image to be saved");
     }
+}
+
+pub(crate) fn row_len(links: &UnGraphMap<Cell, ()>, r: isize) -> usize {
+    links.nodes().filter(|Cell { row, .. }| *row == r).count()
 }
