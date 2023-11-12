@@ -4,10 +4,22 @@ pub struct RegularCell {
     pub col: isize,
 }
 
+impl RegularCell {
+    pub fn new(row: isize, col: isize) -> Self {
+        Self { row, col }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PolarCell {
     pub row: isize,
     pub col: isize,
+}
+
+impl PolarCell {
+    pub fn new(row: isize, col: isize) -> Self {
+        Self { row, col }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -17,6 +29,10 @@ pub struct HexCell {
 }
 
 impl HexCell {
+    pub fn new(row: isize, col: isize) -> Self {
+        Self { row, col }
+    }
+
     pub fn north_diagonal_row(&self) -> isize {
         if self.col % 2 == 0 {
             self.row - 1
@@ -40,8 +56,29 @@ pub struct TriangleCell {
 }
 
 impl TriangleCell {
+    pub fn new(row: isize, col: isize) -> Self {
+        Self { row, col }
+    }
+
     pub fn is_upright(&self) -> bool {
         (self.row + self.col) % 2 == 0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct WeightedCell {
+    pub row: isize,
+    pub col: isize,
+    pub weight: usize,
+}
+
+impl WeightedCell {
+    pub fn new(row: isize, col: isize) -> Self {
+        Self {
+            row,
+            col,
+            weight: 1,
+        }
     }
 }
 
@@ -50,6 +87,9 @@ where
     Self: Clone + Copy + PartialEq + Eq + PartialOrd + Ord + std::hash::Hash,
 {
     fn row(&self) -> isize;
+    fn weight(&self) -> usize {
+        1
+    }
 }
 
 impl CellKind for RegularCell {
@@ -73,5 +113,15 @@ impl CellKind for HexCell {
 impl CellKind for TriangleCell {
     fn row(&self) -> isize {
         self.row
+    }
+}
+
+impl CellKind for WeightedCell {
+    fn row(&self) -> isize {
+        self.row
+    }
+
+    fn weight(&self) -> usize {
+        self.weight
     }
 }

@@ -77,3 +77,7 @@ path = "demos/triangle_maze.rs"
 [[bin]]
 name = "braid"
 path = "demos/braid.rs"
+
+[[bin]]
+name = "weighted_grid"
+path = "demos/weighted_grid.rs"

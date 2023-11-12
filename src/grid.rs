@@ -1,5 +1,5 @@
 use core::fmt;
-use std::f32;
+use std::{cmp::Ordering, collections::BinaryHeap, f32};
 
 use image::{Rgb, RgbImage};
 use imageproc::{
@@ -19,9 +19,9 @@ use rand::{
 use rustc_hash::FxHashMap;
 
 use crate::{
-    cell::{CellKind, HexCell, PolarCell, RegularCell, TriangleCell},
+    cell::{CellKind, HexCell, PolarCell, RegularCell, TriangleCell, WeightedCell},
     distances::Distances,
-    kind::{Hex, Kind, Masked, Polar, Regular, Triangle},
+    kind::{Hex, Kind, Masked, Polar, Regular, Triangle, Weighted},
 };
 
 pub struct Grid<K: Kind> {
@@ -122,28 +122,49 @@ impl<K: Kind> Grid<K> {
     }
 
     pub fn distances_from(&self, cell: K::Cell) -> Distances<K> {
-        let mut distances = Distances::new(cell);
-        let mut frontier = vec![cell];
-
-        while !frontier.is_empty() {
-            let mut new_frontier = Vec::new();
-
-            for cell in frontier {
-                for linked in self.links(cell) {
-                    if distances.get(&linked).is_none() {
-                        distances.insert(linked, distances[cell] + 1);
-                        new_frontier.push(linked);
-                    }
-                }
-            }
-
-            frontier = new_frontier;
+        // Explicitly implement Ord to get a min-heap.
+        #[derive(Copy, Clone, Eq, PartialEq)]
+        struct State<T: CellKind> {
+            cost: usize,
+            cell: T,
         }
 
-        distances
+        impl<T: CellKind> Ord for State<T> {
+            fn cmp(&self, other: &Self) -> Ordering {
+                other
+                    .cost
+                    .cmp(&self.cost)
+                    .then_with(|| self.cell.cmp(&other.cell))
+            }
+        }
+
+        impl<T: CellKind> PartialOrd for State<T> {
+            fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                Some(self.cmp(other))
+            }
+        }
+
+        let mut weights = Distances::new(cell);
+        let mut pending = BinaryHeap::from_iter([State { cost: 0, cell }]);
+
+        while let Some(State { cell, cost }) = pending.pop() {
+            for neighbour in self.links(cell) {
+                let total_weight = cost + neighbour.weight();
+
+                if weights.get(&neighbour).is_none() || total_weight < weights[neighbour] {
+                    pending.push(State {
+                        cost: total_weight,
+                        cell: neighbour,
+                    });
+                    weights.insert(neighbour, total_weight);
+                }
+            }
+        }
+
+        weights
     }
 
-    fn distances(&self) -> Option<Distances<K>> {
+    pub fn distances(&self) -> Option<Distances<K>> {
         match (self.start, self.goal) {
             (None, None) => None,
             (None, Some(cell)) | (Some(cell), None) => Some(self.distances_from(cell)),
@@ -152,19 +173,24 @@ impl<K: Kind> Grid<K> {
     }
 
     fn background_for_cell(distances: &Distances<K>, cell: K::Cell) -> Option<Rgb<u8>> {
-        let distance = distances.get(&cell)?;
-        let (_, max) = distances.max();
-        let intensity = (max - distance) as f32 / max as f32;
-        let dark = (255.0 * intensity).round() as u8;
-        let bright = 128 + (127.0 * intensity) as u8;
-        Some(Rgb([dark, bright, dark]))
+        if cell.weight() > 1 {
+            Some(Rgb([255, 0, 0]))
+        } else {
+            let distance = distances.get(&cell)?;
+            let (_, max) = distances.max();
+            let intensity = (max - distance) as f32 / max as f32;
+            let dark = (255.0 * intensity).round() as u8;
+            let bright = 128 + (127.0 * intensity) as u8;
+            Some(Rgb([dark, bright, dark]))
+        }
+    }
+
+    pub fn num_rows(&self) -> usize {
+        self.kind.num_rows()
     }
 }
 
 impl Grid<Regular> {
-    pub fn num_rows(&self) -> usize {
-        self.kind.rows
-    }
     pub fn num_cols(&self) -> usize {
         self.kind.cols
     }
@@ -181,9 +207,6 @@ impl Grid<Regular> {
 }
 
 impl Grid<Masked> {
-    pub fn num_rows(&self) -> usize {
-        self.kind.0.num_rows()
-    }
     pub fn num_cols(&self) -> usize {
         self.kind.0.num_cols()
     }
@@ -193,22 +216,21 @@ macro_rules! impl_rectangular {
     ($($T:ty),+ $(,)?) => {
         $(
             impl Grid<$T> {
-                pub fn north(&self, cell: RegularCell) -> Option<RegularCell> {
+                pub fn north(&self, cell: <$T as Kind>::Cell) -> Option<<$T as Kind>::Cell> {
                     self.get(cell.row - 1, cell.col)
                 }
-                pub fn south(&self, cell: RegularCell) -> Option<RegularCell> {
+                pub fn south(&self, cell: <$T as Kind>::Cell) -> Option<<$T as Kind>::Cell> {
                     self.get(cell.row + 1, cell.col)
                 }
-                pub fn west(&self, cell: RegularCell) -> Option<RegularCell> {
+                pub fn west(&self, cell: <$T as Kind>::Cell) -> Option<<$T as Kind>::Cell> {
                     self.get(cell.row, cell.col - 1)
                 }
-                pub fn east(&self, cell: RegularCell) -> Option<RegularCell> {
+                pub fn east(&self, cell: <$T as Kind>::Cell) -> Option<<$T as Kind>::Cell> {
                     self.get(cell.row, cell.col + 1)
                 }
 
-                pub fn get(&self, row: isize, col: isize) -> Option<RegularCell> {
-                    let cell = RegularCell { row, col };
-                    self.links.contains_node(cell).then_some(cell)
+                pub fn get(&self, row: isize, col: isize) -> Option<<$T as Kind>::Cell> {
+                    self.links.nodes().find(|n| n.row == row && n.col == col)
                 }
 
                 pub fn save_png(&self, file_name: &str, cell_size: u32) {
@@ -331,7 +353,7 @@ macro_rules! impl_rectangular {
                         let mut bot = connector_at(row + 1, 0).to_string();
 
                         for col in 0..self.num_cols() as isize {
-                            let cell = self.get(row, col).unwrap_or(RegularCell { row: -1, col: -1 });
+                            let cell = self.get(row, col).unwrap_or(<$T as Kind>::Cell::new(-1, -1));
 
                             let formatted_dist = distances
                                 .as_ref()
@@ -373,13 +395,9 @@ macro_rules! impl_rectangular {
     };
 }
 
-impl_rectangular!(Regular, Masked);
+impl_rectangular!(Regular, Masked, Weighted);
 
 impl Grid<Polar> {
-    pub fn num_rows(&self) -> usize {
-        self.kind.rows
-    }
-
     pub fn clockwise(&self, cell: PolarCell) -> Option<PolarCell> {
         self.get(cell.row, cell.col + 1)
     }
@@ -563,9 +581,6 @@ impl Grid<Polar> {
 }
 
 impl Grid<Hex> {
-    pub fn num_rows(&self) -> usize {
-        self.kind.rows
-    }
     pub fn num_cols(&self) -> usize {
         self.kind.cols
     }
@@ -753,9 +768,6 @@ impl Grid<Hex> {
 }
 
 impl Grid<Triangle> {
-    pub fn num_rows(&self) -> usize {
-        self.kind.rows
-    }
     pub fn num_cols(&self) -> usize {
         self.kind.cols
     }
@@ -887,6 +899,31 @@ impl Grid<Triangle> {
 
         img.save(format!("images/{file_name}.png"))
             .expect("image to be saved");
+    }
+}
+
+impl Grid<Weighted> {
+    pub fn num_cols(&self) -> usize {
+        self.kind.cols
+    }
+
+    pub fn set_weight(&mut self, row: isize, col: isize, weight: usize) {
+        let cell = self
+            .links
+            .nodes()
+            .find(|n| n.row == row && n.col == col)
+            .expect("cell to be found");
+        let connected = self
+            .links
+            .edges(cell)
+            .map(|(_, other, _)| other)
+            .collect::<Vec<_>>();
+        self.links.remove_node(cell);
+
+        let cell = self.links.add_node(WeightedCell { row, col, weight });
+        for other in connected {
+            self.links.add_edge(cell, other, ());
+        }
     }
 }
 

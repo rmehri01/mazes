@@ -51,6 +51,10 @@ impl<K: Kind> Distances<K> {
             .map(|(cell, dist)| (*cell, *dist))
             .expect("distances should be non-empty")
     }
+
+    pub fn cells(&self) -> impl Iterator<Item = K::Cell> + '_ {
+        self.distances.keys().copied()
+    }
 }
 
 impl<K: Kind> ops::Index<K::Cell> for Distances<K> {
