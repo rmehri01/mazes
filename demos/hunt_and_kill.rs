@@ -6,7 +6,7 @@ fn main() {
     println!("{grid}");
     grid.save_png("hunt_and_kill", 25);
 
-    grid.set_start(mazes::Cell {
+    grid.set_start(mazes::RegularCell {
         row: grid.num_rows() as isize / 2,
         col: grid.num_cols() as isize / 2,
     });

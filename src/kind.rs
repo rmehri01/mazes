@@ -3,7 +3,7 @@ use std::f32;
 use petgraph::prelude::UnGraphMap;
 
 use crate::{
-    cell::{Cell, CellKind},
+    cell::{CellKind, HexCell, PolarCell, RegularCell, TriangleCell},
     grid::{row_len, Grid},
     mask::Mask,
 };
@@ -70,7 +70,7 @@ where
 }
 
 impl Kind for Regular {
-    type Cell = Cell;
+    type Cell = RegularCell;
 
     fn prepare_grid(&self) -> UnGraphMap<Self::Cell, ()> {
         let rows = self.rows;
@@ -79,7 +79,7 @@ impl Kind for Regular {
         let mut links = UnGraphMap::with_capacity(rows * cols, 0);
         for row in 0..rows {
             for col in 0..cols {
-                links.add_node(Cell {
+                links.add_node(RegularCell {
                     row: row as isize,
                     col: col as isize,
                 });
@@ -100,7 +100,7 @@ impl Kind for Regular {
 }
 
 impl Kind for Masked {
-    type Cell = Cell;
+    type Cell = RegularCell;
 
     fn prepare_grid(&self) -> UnGraphMap<Self::Cell, ()> {
         let mask = &self.0;
@@ -111,7 +111,7 @@ impl Kind for Masked {
         for row in 0..rows {
             for col in 0..cols {
                 if mask[row][col] {
-                    links.add_node(Cell {
+                    links.add_node(RegularCell {
                         row: row as isize,
                         col: col as isize,
                     });
@@ -133,14 +133,14 @@ impl Kind for Masked {
 }
 
 impl Kind for Polar {
-    type Cell = Cell;
+    type Cell = PolarCell;
 
     fn prepare_grid(&self) -> UnGraphMap<Self::Cell, ()> {
         let rows = self.rows as f32;
         let row_height = 1.0 / rows;
 
         let mut links = UnGraphMap::new();
-        links.add_node(Cell { row: 0, col: 0 });
+        links.add_node(PolarCell { row: 0, col: 0 });
 
         for row in 1..self.rows {
             let radius = row as f32 / rows;
@@ -152,7 +152,7 @@ impl Kind for Polar {
 
             let cells = previous_count * ratio;
             for col in 0..cells {
-                links.add_node(Cell {
+                links.add_node(PolarCell {
                     row: row as isize,
                     col: col as isize,
                 });
@@ -175,7 +175,7 @@ impl Kind for Polar {
 }
 
 impl Kind for Hex {
-    type Cell = Cell;
+    type Cell = HexCell;
 
     fn prepare_grid(&self) -> UnGraphMap<Self::Cell, ()> {
         let rows = self.rows;
@@ -184,7 +184,7 @@ impl Kind for Hex {
         let mut links = UnGraphMap::with_capacity(rows * cols, 0);
         for row in 0..rows {
             for col in 0..cols {
-                links.add_node(Cell {
+                links.add_node(HexCell {
                     row: row as isize,
                     col: col as isize,
                 });
@@ -209,7 +209,7 @@ impl Kind for Hex {
 }
 
 impl Kind for Triangle {
-    type Cell = Cell;
+    type Cell = TriangleCell;
 
     fn prepare_grid(&self) -> UnGraphMap<Self::Cell, ()> {
         let rows = self.rows;
@@ -218,7 +218,7 @@ impl Kind for Triangle {
         let mut links = UnGraphMap::with_capacity(rows * cols, 0);
         for row in 0..rows {
             for col in 0..cols {
-                links.add_node(Cell {
+                links.add_node(TriangleCell {
                     row: row as isize,
                     col: col as isize,
                 });

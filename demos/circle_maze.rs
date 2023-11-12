@@ -5,6 +5,6 @@ fn main() {
     let mut grid = mazes::Grid::new(kind, None, None).recursive_backtracker();
     grid.save_png("circle_maze", 25);
 
-    grid.set_start(mazes::Cell { row: 0, col: 0 });
+    grid.set_start(mazes::PolarCell { row: 0, col: 0 });
     grid.save_png("circle_maze_colorized", 25);
 }

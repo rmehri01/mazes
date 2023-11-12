@@ -16,7 +16,7 @@ use rand::seq::IteratorRandom;
 use rustc_hash::FxHashMap;
 
 use crate::{
-    cell::Cell,
+    cell::{CellKind, HexCell, PolarCell, RegularCell, TriangleCell},
     distances::Distances,
     kind::{Hex, Kind, Masked, Polar, Regular, Triangle},
 };
@@ -134,11 +134,11 @@ impl Grid<Regular> {
         self.kind.cols
     }
 
-    pub fn rows(&self) -> Vec<Vec<Cell>> {
+    pub fn rows(&self) -> Vec<Vec<RegularCell>> {
         (0..self.num_rows() as isize)
             .map(|row| {
                 (0..self.num_cols() as isize)
-                    .map(|col| Cell { row, col })
+                    .map(|col| RegularCell { row, col })
                     .collect()
             })
             .collect()
@@ -158,21 +158,21 @@ macro_rules! impl_rectangular {
     ($($T:ty),+ $(,)?) => {
         $(
             impl Grid<$T> {
-                pub fn north(&self, cell: Cell) -> Option<Cell> {
+                pub fn north(&self, cell: RegularCell) -> Option<RegularCell> {
                     self.get(cell.row - 1, cell.col)
                 }
-                pub fn south(&self, cell: Cell) -> Option<Cell> {
+                pub fn south(&self, cell: RegularCell) -> Option<RegularCell> {
                     self.get(cell.row + 1, cell.col)
                 }
-                pub fn west(&self, cell: Cell) -> Option<Cell> {
+                pub fn west(&self, cell: RegularCell) -> Option<RegularCell> {
                     self.get(cell.row, cell.col - 1)
                 }
-                pub fn east(&self, cell: Cell) -> Option<Cell> {
+                pub fn east(&self, cell: RegularCell) -> Option<RegularCell> {
                     self.get(cell.row, cell.col + 1)
                 }
 
-                pub fn get(&self, row: isize, col: isize) -> Option<Cell> {
-                    let cell = Cell { row, col };
+                pub fn get(&self, row: isize, col: isize) -> Option<RegularCell> {
+                    let cell = RegularCell { row, col };
                     self.links.contains_node(cell).then_some(cell)
                 }
 
@@ -296,7 +296,7 @@ macro_rules! impl_rectangular {
                         let mut bot = connector_at(row + 1, 0).to_string();
 
                         for col in 0..self.num_cols() as isize {
-                            let cell = self.get(row, col).unwrap_or(Cell { row: -1, col: -1 });
+                            let cell = self.get(row, col).unwrap_or(RegularCell { row: -1, col: -1 });
 
                             let formatted_dist = distances
                                 .as_ref()
@@ -345,13 +345,13 @@ impl Grid<Polar> {
         self.kind.rows
     }
 
-    pub fn clockwise(&self, cell: Cell) -> Option<Cell> {
+    pub fn clockwise(&self, cell: PolarCell) -> Option<PolarCell> {
         self.get(cell.row, cell.col + 1)
     }
-    pub fn counter_clockwise(&self, cell: Cell) -> Option<Cell> {
+    pub fn counter_clockwise(&self, cell: PolarCell) -> Option<PolarCell> {
         self.get(cell.row, cell.col - 1)
     }
-    pub fn inward(&self, cell: Cell) -> Option<Cell> {
+    pub fn inward(&self, cell: PolarCell) -> Option<PolarCell> {
         if cell.row == 0 {
             return None;
         }
@@ -359,17 +359,17 @@ impl Grid<Polar> {
         let ratio = row_len(&self.links, cell.row) / row_len(&self.links, cell.row - 1);
         self.get(cell.row - 1, cell.col / ratio as isize)
     }
-    pub fn outward(&self, cell: Cell) -> impl Iterator<Item = Cell> {
+    pub fn outward(&self, cell: PolarCell) -> impl Iterator<Item = PolarCell> {
         let ratio = (row_len(&self.links, cell.row + 1) / row_len(&self.links, cell.row)) as isize;
 
-        (cell.col * ratio..cell.col * ratio + ratio).map(move |col| Cell {
+        (cell.col * ratio..cell.col * ratio + ratio).map(move |col| PolarCell {
             row: cell.row + 1,
             col,
         })
     }
 
-    pub fn get(&self, row: isize, col: isize) -> Option<Cell> {
-        let cell = Cell {
+    pub fn get(&self, row: isize, col: isize) -> Option<PolarCell> {
+        let cell = PolarCell {
             row,
             col: col % row_len(&self.links, row) as isize,
         };
@@ -535,53 +535,38 @@ impl Grid<Hex> {
         self.kind.cols
     }
 
-    pub fn north_west(&self, cell: Cell) -> Option<Cell> {
-        self.get(Self::north_diagonal(cell), cell.col - 1)
+    pub fn north_west(&self, cell: HexCell) -> Option<HexCell> {
+        self.get(cell.north_diagonal_row(), cell.col - 1)
     }
-    pub fn north(&self, cell: Cell) -> Option<Cell> {
+    pub fn north(&self, cell: HexCell) -> Option<HexCell> {
         self.get(cell.row - 1, cell.col)
     }
-    pub fn north_east(&self, cell: Cell) -> Option<Cell> {
-        self.get(Self::north_diagonal(cell), cell.col + 1)
+    pub fn north_east(&self, cell: HexCell) -> Option<HexCell> {
+        self.get(cell.north_diagonal_row(), cell.col + 1)
     }
-    pub fn south_west(&self, cell: Cell) -> Option<Cell> {
-        self.get(Self::south_diagonal(cell), cell.col - 1)
+    pub fn south_west(&self, cell: HexCell) -> Option<HexCell> {
+        self.get(cell.south_diagonal_row(), cell.col - 1)
     }
-    pub fn south(&self, cell: Cell) -> Option<Cell> {
+    pub fn south(&self, cell: HexCell) -> Option<HexCell> {
         self.get(cell.row + 1, cell.col)
     }
-    pub fn south_east(&self, cell: Cell) -> Option<Cell> {
-        self.get(Self::south_diagonal(cell), cell.col + 1)
+    pub fn south_east(&self, cell: HexCell) -> Option<HexCell> {
+        self.get(cell.south_diagonal_row(), cell.col + 1)
     }
 
-    fn north_diagonal(cell: Cell) -> isize {
-        if cell.col % 2 == 0 {
-            cell.row - 1
-        } else {
-            cell.row
-        }
-    }
-    fn south_diagonal(cell: Cell) -> isize {
-        if cell.col % 2 == 0 {
-            cell.row
-        } else {
-            cell.row + 1
-        }
-    }
-
-    pub fn get(&self, row: isize, col: isize) -> Option<Cell> {
-        let cell = Cell { row, col };
+    pub fn get(&self, row: isize, col: isize) -> Option<HexCell> {
+        let cell = HexCell { row, col };
         self.links.contains_node(cell).then_some(cell)
     }
-    pub fn get_next_in_row(&self, cell: Cell) -> Option<Cell> {
+    pub fn get_next_in_row(&self, cell: HexCell) -> Option<HexCell> {
         self.get(cell.row, cell.col + 1)
     }
 
-    pub fn rows(&self) -> Vec<Vec<Cell>> {
+    pub fn rows(&self) -> Vec<Vec<HexCell>> {
         (0..self.num_rows() as isize)
             .map(|row| {
                 (0..self.num_cols() as isize)
-                    .map(|col| Cell { row, col })
+                    .map(|col| HexCell { row, col })
                     .collect()
             })
             .collect()
@@ -740,33 +725,29 @@ impl Grid<Triangle> {
         self.kind.cols
     }
 
-    pub fn north(&self, cell: Cell) -> Option<Cell> {
-        if Self::is_upright(cell) {
+    pub fn north(&self, cell: TriangleCell) -> Option<TriangleCell> {
+        if cell.is_upright() {
             return None;
         }
 
         self.get(cell.row - 1, cell.col)
     }
-    pub fn south(&self, cell: Cell) -> Option<Cell> {
-        if !Self::is_upright(cell) {
+    pub fn south(&self, cell: TriangleCell) -> Option<TriangleCell> {
+        if !cell.is_upright() {
             return None;
         }
 
         self.get(cell.row + 1, cell.col)
     }
-    pub fn west(&self, cell: Cell) -> Option<Cell> {
+    pub fn west(&self, cell: TriangleCell) -> Option<TriangleCell> {
         self.get(cell.row, cell.col - 1)
     }
-    pub fn east(&self, cell: Cell) -> Option<Cell> {
+    pub fn east(&self, cell: TriangleCell) -> Option<TriangleCell> {
         self.get(cell.row, cell.col + 1)
     }
 
-    fn is_upright(cell: Cell) -> bool {
-        (cell.row + cell.col) % 2 == 0
-    }
-
-    pub fn get(&self, row: isize, col: isize) -> Option<Cell> {
-        let cell = Cell { row, col };
+    pub fn get(&self, row: isize, col: isize) -> Option<TriangleCell> {
+        let cell = TriangleCell { row, col };
         self.links.contains_node(cell).then_some(cell)
     }
 
@@ -795,7 +776,7 @@ impl Grid<Triangle> {
                     let mid_x = cx as i32;
                     let east_x = (cx + half_width) as i32;
 
-                    let (base_y, apex_y) = if Self::is_upright(cell) {
+                    let (base_y, apex_y) = if cell.is_upright() {
                         ((cy + half_height) as i32, (cy - half_height) as i32)
                     } else {
                         ((cy - half_height) as i32, (cy + half_height) as i32)
@@ -822,7 +803,7 @@ impl Grid<Triangle> {
             let mid_x = cx as i32;
             let east_x = (cx + half_width) as i32;
 
-            let (base_y, apex_y) = if Self::is_upright(cell) {
+            let (base_y, apex_y) = if cell.is_upright() {
                 ((cy + half_height) as i32, (cy - half_height) as i32)
             } else {
                 ((cy - half_height) as i32, (cy + half_height) as i32)
@@ -852,8 +833,8 @@ impl Grid<Triangle> {
                 );
             }
 
-            let no_south = Self::is_upright(cell) && self.south(cell).is_none();
-            let not_linked = !Self::is_upright(cell)
+            let no_south = cell.is_upright() && self.south(cell).is_none();
+            let not_linked = !cell.is_upright()
                 && !self
                     .north(cell)
                     .map(|north| self.are_linked(cell, north))
@@ -874,6 +855,6 @@ impl Grid<Triangle> {
     }
 }
 
-pub(crate) fn row_len(links: &UnGraphMap<Cell, ()>, r: isize) -> usize {
-    links.nodes().filter(|Cell { row, .. }| *row == r).count()
+pub(crate) fn row_len(links: &UnGraphMap<impl CellKind, ()>, r: isize) -> usize {
+    links.nodes().filter(|c| c.row() == r).count()
 }

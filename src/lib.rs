@@ -15,6 +15,6 @@ mod grid;
 pub mod kind;
 mod mask;
 
-pub use cell::Cell;
+pub use cell::{HexCell, PolarCell, RegularCell, TriangleCell};
 pub use grid::Grid;
 pub use mask::Mask;
