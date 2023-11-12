@@ -648,24 +648,42 @@ impl Grid<Hex> {
 
             // f/n = far/near
             // n/s/e/w = north/south/east/west
-            let x_fw = cx - cell_size;
-            let x_nw = cx - a_size;
-            let x_ne = cx + a_size;
-            let x_fe = cx + cell_size;
+            let x_fw = (cx - cell_size) as i32;
+            let x_nw = (cx - a_size) as i32;
+            let x_ne = (cx + a_size) as i32;
+            let x_fe = (cx + cell_size) as i32;
 
             // m = middle
-            let y_n = cy - b_size;
-            let y_m = cy;
-            let y_s = cy + b_size;
+            let y_n = (cy - b_size) as i32;
+            let y_m = cy as i32;
+            let y_s = (cy + b_size) as i32;
 
             if self.south_west(cell).is_none() {
-                draw_line_segment_mut(&mut img, (x_fw, y_m), (x_nw, y_s), wall);
+                draw_antialiased_line_segment_mut(
+                    &mut img,
+                    (x_fw, y_m),
+                    (x_nw, y_s),
+                    wall,
+                    pixelops::interpolate,
+                );
             }
             if self.north_west(cell).is_none() {
-                draw_line_segment_mut(&mut img, (x_fw, y_m), (x_nw, y_n), wall);
+                draw_antialiased_line_segment_mut(
+                    &mut img,
+                    (x_fw, y_m),
+                    (x_nw, y_n),
+                    wall,
+                    pixelops::interpolate,
+                );
             }
             if self.north(cell).is_none() {
-                draw_line_segment_mut(&mut img, (x_nw, y_n), (x_ne, y_n), wall);
+                draw_antialiased_line_segment_mut(
+                    &mut img,
+                    (x_nw, y_n),
+                    (x_ne, y_n),
+                    wall,
+                    pixelops::interpolate,
+                );
             }
 
             if !self
@@ -673,21 +691,39 @@ impl Grid<Hex> {
                 .map(|east| self.are_linked(cell, east))
                 .unwrap_or(false)
             {
-                draw_line_segment_mut(&mut img, (x_ne, y_n), (x_fe, y_m), wall);
+                draw_antialiased_line_segment_mut(
+                    &mut img,
+                    (x_ne, y_n),
+                    (x_fe, y_m),
+                    wall,
+                    pixelops::interpolate,
+                );
             }
             if !self
                 .south_east(cell)
                 .map(|east| self.are_linked(cell, east))
                 .unwrap_or(false)
             {
-                draw_line_segment_mut(&mut img, (x_fe, y_m), (x_ne, y_s), wall);
+                draw_antialiased_line_segment_mut(
+                    &mut img,
+                    (x_fe, y_m),
+                    (x_ne, y_s),
+                    wall,
+                    pixelops::interpolate,
+                );
             }
             if !self
                 .south(cell)
                 .map(|east| self.are_linked(cell, east))
                 .unwrap_or(false)
             {
-                draw_line_segment_mut(&mut img, (x_ne, y_s), (x_nw, y_s), wall);
+                draw_antialiased_line_segment_mut(
+                    &mut img,
+                    (x_ne, y_s),
+                    (x_nw, y_s),
+                    wall,
+                    pixelops::interpolate,
+                );
             }
         }
 
