@@ -30,7 +30,7 @@ fn main() {
                     _ => panic!("invalid generator"),
                 };
                 let grid = generator(mazes::Grid::new(kind, None, None));
-                grid.dead_ends().count()
+                grid.dead_ends().len()
             })
             .collect::<Vec<_>>();
 

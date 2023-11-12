@@ -12,7 +12,10 @@ use imageproc::{
     rect::Rect,
 };
 use petgraph::prelude::UnGraphMap;
-use rand::seq::IteratorRandom;
+use rand::{
+    seq::{IteratorRandom, SliceRandom},
+    Rng,
+};
 use rustc_hash::FxHashMap;
 
 use crate::{
@@ -80,10 +83,42 @@ impl<K: Kind> Grid<K> {
         self.links.node_count()
     }
 
-    pub fn dead_ends(&self) -> impl Iterator<Item = K::Cell> + '_ {
+    pub fn dead_ends(&self) -> Vec<K::Cell> {
         self.cells()
             .into_iter()
             .filter(|cell| self.links(*cell).count() == 1)
+            .collect()
+    }
+
+    pub fn braid(mut self, p: f32) -> Self {
+        let mut dead_ends = self.dead_ends();
+        dead_ends.shuffle(&mut rand::thread_rng());
+
+        for cell in dead_ends {
+            if self.links(cell).count() != 1 || rand::thread_rng().gen_range(0.0..=1.0) > p {
+                continue;
+            }
+
+            let neighbours = self
+                .neighbours(cell)
+                .filter(|n| !self.are_linked(cell, *n))
+                .collect::<Vec<_>>();
+            let dead_end_neighbours = neighbours
+                .iter()
+                .filter(|n| self.links(**n).count() == 1)
+                .copied();
+
+            let neighbour = dead_end_neighbours
+                .choose(&mut rand::thread_rng())
+                .unwrap_or_else(|| {
+                    *neighbours
+                        .choose(&mut rand::thread_rng())
+                        .expect("neighbours should be non-empty")
+                });
+            self.link(cell, neighbour);
+        }
+
+        self
     }
 
     pub fn distances_from(&self, cell: K::Cell) -> Distances<K> {
