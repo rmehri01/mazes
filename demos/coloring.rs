@@ -15,5 +15,5 @@ fn main() {
     )
     .binary_tree();
     println!("{grid}");
-    grid.save_png("colorized", 25);
+    grid.save_png("colorized", 25, 0.0);
 }

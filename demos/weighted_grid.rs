@@ -13,7 +13,7 @@ fn main() {
         grid.get(grid.num_rows() as isize - 1, grid.num_cols() as isize - 1)
             .unwrap(),
     );
-    grid.save_png("weighted_original", 25);
+    grid.save_png("weighted_original", 25, 0.0);
     println!("{grid}");
 
     let cell = grid
@@ -23,6 +23,6 @@ fn main() {
         .choose(&mut rand::thread_rng())
         .expect("at least one cell in the path");
     grid.set_weight(cell.row, cell.col, 50);
-    grid.save_png("weighted_rerouted", 25);
+    grid.save_png("weighted_rerouted", 25, 0.0);
     println!("{grid}");
 }

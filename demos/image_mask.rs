@@ -6,5 +6,5 @@ fn main() {
     let grid = mazes::Grid::new(kind, None, None).recursive_backtracker();
 
     println!("{grid}");
-    grid.save_png("image_mask", 25);
+    grid.save_png("image_mask", 25, 0.0);
 }
