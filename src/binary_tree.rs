@@ -1,18 +1,44 @@
-use crate::grid::{Grid, Regular};
+use crate::{
+    grid::{Grid, Regular},
+    Hex,
+};
 
-// TODO: should this be part of grid?
-pub fn binary_tree(grid: &mut Grid<Regular>) {
-    for cell in grid.cells() {
-        match (grid.north(cell), grid.east(cell)) {
-            (None, None) => {}
-            (None, Some(other)) | (Some(other), None) => grid.link(cell, other),
-            (Some(north), Some(east)) => {
-                if rand::random() {
-                    grid.link(cell, north);
-                } else {
-                    grid.link(cell, east);
+impl Grid<Regular> {
+    pub fn binary_tree(mut self) -> Self {
+        for cell in self.cells() {
+            match (self.north(cell), self.east(cell)) {
+                (None, None) => {}
+                (None, Some(other)) | (Some(other), None) => self.link(cell, other),
+                (Some(north), Some(east)) => {
+                    if rand::random() {
+                        self.link(cell, north);
+                    } else {
+                        self.link(cell, east);
+                    }
                 }
             }
         }
+
+        self
+    }
+}
+
+impl Grid<Hex> {
+    pub fn binary_tree(mut self) -> Self {
+        for cell in self.cells() {
+            match (self.north(cell), self.get_next_in_row(cell)) {
+                (None, None) => {}
+                (None, Some(other)) | (Some(other), None) => self.link(cell, other),
+                (Some(north), Some(east)) => {
+                    if rand::random() {
+                        self.link(cell, north);
+                    } else {
+                        self.link(cell, east);
+                    }
+                }
+            }
+        }
+
+        self
     }
 }

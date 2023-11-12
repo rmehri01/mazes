@@ -1,3 +1,5 @@
+use mazes::{Grid, Regular};
+
 fn main() {
     let generators = [
         "binary_tree",
@@ -17,18 +19,17 @@ fn main() {
         let deadend_counts = (0..TRIES)
             .map(|_| {
                 let kind = mazes::Regular::new(SIZE, SIZE);
-                let mut grid = mazes::Grid::new(kind, None, None);
                 // TODO: could clean up
                 let generator = match name {
-                    "binary_tree" => mazes::binary_tree,
-                    "sidewinder" => mazes::sidewinder,
-                    "aldous_broder" => mazes::aldous_broder,
-                    "wilsons" => mazes::wilsons,
-                    "hunt_and_kill" => mazes::hunt_and_kill,
-                    "recursive_backtracker" => mazes::recursive_backtracker,
+                    "binary_tree" => Grid::<Regular>::binary_tree,
+                    "sidewinder" => Grid::<Regular>::sidewinder,
+                    "aldous_broder" => Grid::<Regular>::aldous_broder,
+                    "wilsons" => Grid::<Regular>::wilsons,
+                    "hunt_and_kill" => Grid::<Regular>::hunt_and_kill,
+                    "recursive_backtracker" => Grid::<Regular>::recursive_backtracker,
                     _ => panic!("invalid generator"),
                 };
-                generator(&mut grid);
+                let grid = generator(mazes::Grid::new(kind, None, None));
                 grid.dead_ends().count()
             })
             .collect::<Vec<_>>();

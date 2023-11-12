@@ -2,22 +2,26 @@ use rand::seq::IteratorRandom;
 
 use crate::grid::{Grid, GridKind};
 
-pub fn recursive_backtracker(grid: &mut Grid<impl GridKind>) {
-    let mut stack = vec![grid.get_random_cell()];
+impl<K: GridKind> Grid<K> {
+    pub fn recursive_backtracker(mut self) -> Self {
+        let mut stack = vec![self.get_random_cell()];
 
-    while let Some(current) = stack.last() {
-        let neighbours = grid
-            .neighbours(*current)
-            .filter(|n| grid.links(*n).next().is_none());
+        while let Some(current) = stack.last() {
+            let neighbours = self
+                .neighbours(*current)
+                .filter(|n| self.links(*n).next().is_none());
 
-        match neighbours.choose(&mut rand::thread_rng()) {
-            Some(neighbour) => {
-                grid.link(*current, neighbour);
-                stack.push(neighbour);
-            }
-            None => {
-                stack.pop();
+            match neighbours.choose(&mut rand::thread_rng()) {
+                Some(neighbour) => {
+                    self.link(*current, neighbour);
+                    stack.push(neighbour);
+                }
+                None => {
+                    stack.pop();
+                }
             }
         }
+
+        self
     }
 }

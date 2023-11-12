@@ -1,7 +1,6 @@
 fn main() {
     let kind = mazes::Regular::new(25, 25);
-    let mut grid = mazes::Grid::new(kind, None, None);
-    mazes::recursive_backtracker(&mut grid);
+    let mut grid = mazes::Grid::new(kind, None, None).recursive_backtracker();
     println!("{grid}");
     grid.save_png("recursive_backtracker", 25);
 

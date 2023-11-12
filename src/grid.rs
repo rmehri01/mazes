@@ -50,6 +50,17 @@ impl Polar {
     }
 }
 
+pub struct Hex {
+    rows: usize,
+    cols: usize,
+}
+
+impl Hex {
+    pub fn new(rows: usize, cols: usize) -> Self {
+        Self { rows, cols }
+    }
+}
+
 pub trait GridKind
 where
     Self: Sized,
@@ -162,6 +173,40 @@ impl GridKind for Polar {
             .into_iter()
             .flatten()
             .chain(grid.outward(cell))
+    }
+}
+
+impl GridKind for Hex {
+    type Cell = Cell;
+
+    fn prepare_grid(&self) -> UnGraphMap<Self::Cell, ()> {
+        let rows = self.rows;
+        let cols = self.cols;
+
+        let mut links = UnGraphMap::with_capacity(rows * cols, 0);
+        for row in 0..rows {
+            for col in 0..cols {
+                links.add_node(Cell {
+                    row: row as isize,
+                    col: col as isize,
+                });
+            }
+        }
+
+        links
+    }
+
+    fn neighbours(grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell> {
+        let north_west = grid.north_west(cell);
+        let north = grid.north(cell);
+        let north_east = grid.north_east(cell);
+        let south_west = grid.south_west(cell);
+        let south = grid.south(cell);
+        let south_east = grid.south_east(cell);
+
+        [north_west, north, north_east, south_west, south, south_east]
+            .into_iter()
+            .flatten()
     }
 }
 
@@ -669,6 +714,175 @@ impl Grid<Polar> {
             self.num_rows() as i32 * cell_size as i32,
             wall,
         );
+
+        img.save(format!("images/{file_name}.png"))
+            .expect("image to be saved");
+    }
+}
+
+impl Grid<Hex> {
+    pub fn num_rows(&self) -> usize {
+        self.kind.rows
+    }
+    pub fn num_cols(&self) -> usize {
+        self.kind.cols
+    }
+
+    pub fn north_west(&self, cell: Cell) -> Option<Cell> {
+        self.get(Self::north_diagonal(cell), cell.col - 1)
+    }
+    pub fn north(&self, cell: Cell) -> Option<Cell> {
+        self.get(cell.row - 1, cell.col)
+    }
+    pub fn north_east(&self, cell: Cell) -> Option<Cell> {
+        self.get(Self::north_diagonal(cell), cell.col + 1)
+    }
+    pub fn south_west(&self, cell: Cell) -> Option<Cell> {
+        self.get(Self::south_diagonal(cell), cell.col - 1)
+    }
+    pub fn south(&self, cell: Cell) -> Option<Cell> {
+        self.get(cell.row + 1, cell.col)
+    }
+    pub fn south_east(&self, cell: Cell) -> Option<Cell> {
+        self.get(Self::south_diagonal(cell), cell.col + 1)
+    }
+
+    fn north_diagonal(cell: Cell) -> isize {
+        if cell.col % 2 == 0 {
+            cell.row - 1
+        } else {
+            cell.row
+        }
+    }
+    fn south_diagonal(cell: Cell) -> isize {
+        if cell.col % 2 == 0 {
+            cell.row
+        } else {
+            cell.row + 1
+        }
+    }
+
+    pub fn get(&self, row: isize, col: isize) -> Option<Cell> {
+        let cell = Cell { row, col };
+        self.links.contains_node(cell).then_some(cell)
+    }
+    pub fn get_next_in_row(&self, cell: Cell) -> Option<Cell> {
+        self.get(cell.row, cell.col + 1)
+    }
+
+    pub fn rows(&self) -> Vec<Vec<Cell>> {
+        (0..self.num_rows() as isize)
+            .map(|row| {
+                (0..self.num_cols() as isize)
+                    .map(|col| Cell { row, col })
+                    .collect()
+            })
+            .collect()
+    }
+
+    pub fn save_png(&self, file_name: &str, cell_size: u32) {
+        let cell_size = cell_size as f32;
+
+        let a_size = cell_size / 2.0;
+        let b_size = cell_size * 3.0_f32.sqrt() / 2.0;
+        let height = b_size * 2.0;
+
+        let img_width = (3.0 * a_size * self.num_cols() as f32 + a_size + 0.5) as u32;
+        let img_height = (height * self.num_rows() as f32 + b_size + 0.5) as u32;
+
+        let background = Rgb([255, 255, 255]);
+        let wall = Rgb([0, 0, 0]);
+
+        let mut img = RgbImage::from_pixel(img_width + 1, img_height + 1, background);
+
+        if let Some(distances) = self.distances() {
+            for cell in self.cells() {
+                if let Some(color) = Self::background_for_cell(&distances, cell) {
+                    let cx = cell_size + 3.0 * cell.col as f32 * a_size;
+                    let mut cy = b_size + cell.row as f32 * height;
+                    if cell.col % 2 == 1 {
+                        cy += b_size;
+                    }
+
+                    // f/n = far/near
+                    // n/s/e/w = north/south/east/west
+                    let x_fw = (cx - cell_size) as i32;
+                    let x_nw = (cx - a_size) as i32;
+                    let x_ne = (cx + a_size) as i32;
+                    let x_fe = (cx + cell_size) as i32;
+
+                    // m = middle
+                    let y_n = (cy - b_size) as i32;
+                    let y_m = cy as i32;
+                    let y_s = (cy + b_size) as i32;
+
+                    draw_polygon_mut(
+                        &mut img,
+                        &[
+                            Point::new(x_fw, y_m),
+                            Point::new(x_nw, y_n),
+                            Point::new(x_ne, y_n),
+                            Point::new(x_fe, y_m),
+                            Point::new(x_ne, y_s),
+                            Point::new(x_nw, y_s),
+                        ],
+                        color,
+                    );
+                }
+            }
+        }
+
+        for cell in self.cells() {
+            let cx = cell_size + 3.0 * cell.col as f32 * a_size;
+            let mut cy = b_size + cell.row as f32 * height;
+            if cell.col % 2 == 1 {
+                cy += b_size;
+            }
+
+            // f/n = far/near
+            // n/s/e/w = north/south/east/west
+            let x_fw = cx - cell_size;
+            let x_nw = cx - a_size;
+            let x_ne = cx + a_size;
+            let x_fe = cx + cell_size;
+
+            // m = middle
+            let y_n = cy - b_size;
+            let y_m = cy;
+            let y_s = cy + b_size;
+
+            if self.south_west(cell).is_none() {
+                draw_line_segment_mut(&mut img, (x_fw, y_m), (x_nw, y_s), wall);
+            }
+            if self.north_west(cell).is_none() {
+                draw_line_segment_mut(&mut img, (x_fw, y_m), (x_nw, y_n), wall);
+            }
+            if self.north(cell).is_none() {
+                draw_line_segment_mut(&mut img, (x_nw, y_n), (x_ne, y_n), wall);
+            }
+
+            if !self
+                .north_east(cell)
+                .map(|east| self.are_linked(cell, east))
+                .unwrap_or(false)
+            {
+                draw_line_segment_mut(&mut img, (x_ne, y_n), (x_fe, y_m), wall);
+            }
+            if !self
+                .south_east(cell)
+                .map(|east| self.are_linked(cell, east))
+                .unwrap_or(false)
+            {
+                draw_line_segment_mut(&mut img, (x_fe, y_m), (x_ne, y_s), wall);
+            }
+            if !self
+                .south(cell)
+                .map(|east| self.are_linked(cell, east))
+                .unwrap_or(false)
+            {
+                draw_line_segment_mut(&mut img, (x_ne, y_s), (x_nw, y_s), wall);
+            }
+        }
 
         img.save(format!("images/{file_name}.png"))
             .expect("image to be saved");

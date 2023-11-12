@@ -1,7 +1,6 @@
 fn main() {
     let kind = mazes::Regular::new(25, 25);
-    let mut grid = mazes::Grid::new(kind, None, None);
-    mazes::hunt_and_kill(&mut grid);
+    let mut grid = mazes::Grid::new(kind, None, None).hunt_and_kill();
     println!("{grid}");
     grid.save_png("hunt_and_kill", 25);
 

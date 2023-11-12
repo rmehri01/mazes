@@ -2,21 +2,25 @@ use rand::seq::IteratorRandom;
 
 use crate::grid::{Grid, GridKind};
 
-pub fn aldous_broder(grid: &mut Grid<impl GridKind>) {
-    let mut cell = grid.get_random_cell();
-    let mut unvisited = grid.size() - 1;
+impl<K: GridKind> Grid<K> {
+    pub fn aldous_broder(mut self) -> Self {
+        let mut cell = self.get_random_cell();
+        let mut unvisited = self.size() - 1;
 
-    while unvisited > 0 {
-        let neighbour = grid
-            .neighbours(cell)
-            .choose(&mut rand::thread_rng())
-            .expect("neighbours should be non-empty");
+        while unvisited > 0 {
+            let neighbour = self
+                .neighbours(cell)
+                .choose(&mut rand::thread_rng())
+                .expect("neighbours should be non-empty");
 
-        if grid.links(neighbour).next().is_none() {
-            grid.link(cell, neighbour);
-            unvisited -= 1;
+            if self.links(neighbour).next().is_none() {
+                self.link(cell, neighbour);
+                unvisited -= 1;
+            }
+
+            cell = neighbour;
         }
 
-        cell = neighbour;
+        self
     }
 }

@@ -19,12 +19,6 @@ mod recursive_backtracker;
 mod sidewinder;
 mod wilsons;
 
-pub use aldous_broder::aldous_broder;
-pub use binary_tree::binary_tree;
 pub use cell::Cell;
-pub use grid::{Grid, GridKind, Masked, Polar, Regular};
-pub use hunt_and_kill::hunt_and_kill;
+pub use grid::{Grid, GridKind, Hex, Masked, Polar, Regular};
 pub use mask::Mask;
-pub use recursive_backtracker::recursive_backtracker;
-pub use sidewinder::sidewinder;
-pub use wilsons::wilsons;

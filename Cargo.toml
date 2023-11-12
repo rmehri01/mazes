@@ -65,3 +65,7 @@ path = "demos/image_mask.rs"
 [[bin]]
 name = "circle_maze"
 path = "demos/circle_maze.rs"
+
+[[bin]]
+name = "hex_maze"
+path = "demos/hex_maze.rs"

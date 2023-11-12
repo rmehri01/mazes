@@ -1,35 +1,78 @@
 use rand::seq::SliceRandom;
 
-use crate::grid::{Grid, Regular};
+use crate::{
+    grid::{Grid, Regular},
+    Hex,
+};
 
-pub fn sidewinder(grid: &mut Grid<Regular>) {
-    for row in grid.rows() {
-        let mut run = Vec::new();
+impl Grid<Regular> {
+    pub fn sidewinder(mut self) -> Self {
+        for row in self.rows() {
+            let mut run = Vec::new();
 
-        for cell in row {
-            run.push(cell);
+            for cell in row {
+                run.push(cell);
 
-            let at_east_boundary = grid.east(cell).is_none();
-            let at_north_boundary = grid.north(cell).is_none();
+                let at_east_boundary = self.east(cell).is_none();
+                let at_north_boundary = self.north(cell).is_none();
 
-            let should_close = at_east_boundary || (!at_north_boundary && rand::random());
+                let should_close = at_east_boundary || (!at_north_boundary && rand::random());
 
-            if should_close {
-                let member = run
-                    .choose(&mut rand::thread_rng())
-                    .copied()
-                    .expect("run should be non-empty");
+                if should_close {
+                    let member = run
+                        .choose(&mut rand::thread_rng())
+                        .copied()
+                        .expect("run should be non-empty");
 
-                if let Some(north) = grid.north(member) {
-                    grid.link(member, north);
+                    if let Some(north) = self.north(member) {
+                        self.link(member, north);
+                    }
+                    run.clear();
+                } else {
+                    let east = self
+                        .east(cell)
+                        .expect("east should always exist when not closing a run");
+                    self.link(cell, east);
                 }
-                run.clear();
-            } else {
-                let east = grid
-                    .east(cell)
-                    .expect("east should always exist when not closing a run");
-                grid.link(cell, east);
             }
         }
+
+        self
+    }
+}
+
+impl Grid<Hex> {
+    pub fn sidewinder(mut self) -> Self {
+        for row in self.rows() {
+            let mut run = Vec::new();
+
+            for cell in row {
+                run.push(cell);
+
+                let at_east_boundary = self.get_next_in_row(cell).is_none();
+                let at_north_boundary = self.north(cell).is_none();
+
+                let should_close = at_east_boundary || (!at_north_boundary && rand::random());
+
+                if should_close {
+                    let member = run
+                        .choose(&mut rand::thread_rng())
+                        .copied()
+                        .expect("run should be non-empty");
+
+                    if let Some(north) = self.north(member) {
+                        self.link(member, north);
+                    }
+                    run.clear();
+                } else {
+                    let east = self
+                        .get_next_in_row(cell)
+                        .expect("east should always exist when not closing a run");
+                    self.link(cell, east);
+                }
+            }
+        }
+
+        self
     }
 }
