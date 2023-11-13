@@ -25,7 +25,6 @@ impl<K: Kind> Distances<K> {
         self.distances.insert(cell, distance);
     }
 
-    // TODO: does this work
     pub fn path_to(&self, goal: K::Cell, grid: &Grid<K>) -> Self {
         let mut current = goal;
 

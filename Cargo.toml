@@ -85,3 +85,7 @@ path = "demos/weighted_grid.rs"
 [[bin]]
 name = "inset"
 path = "demos/inset.rs"
+
+[[bin]]
+name = "weave"
+path = "demos/weave.rs"

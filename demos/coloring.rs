@@ -1,4 +1,4 @@
-use mazes::kind;
+use mazes::{cell, kind};
 
 fn main() {
     const ROWS: usize = 25;
@@ -7,7 +7,7 @@ fn main() {
     let kind = kind::Regular::new(ROWS, COLS);
     let grid = mazes::Grid::new(
         kind,
-        Some(mazes::RegularCell {
+        Some(cell::RegularCell {
             row: ROWS as isize / 2,
             col: COLS as isize / 2,
         }),

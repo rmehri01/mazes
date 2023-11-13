@@ -19,9 +19,12 @@ use rand::{
 use rustc_hash::FxHashMap;
 
 use crate::{
-    cell::{CellKind, HexCell, PolarCell, RegularCell, TriangleCell, WeightedCell},
+    cell::{
+        CellKind, HexCell, OverCell, PolarCell, RegularCell, TriangleCell, UnderCell, WeaveCell,
+        WeightedCell,
+    },
     distances::Distances,
-    kind::{Hex, Kind, Masked, Polar, Regular, Triangle, Weighted},
+    kind::{Hex, Kind, Masked, Polar, Regular, Triangle, Weave, Weighted},
 };
 
 const BACKGROUND: Rgb<u8> = Rgb([255, 255, 255]);
@@ -58,6 +61,9 @@ impl<K: Kind> Grid<K> {
     }
 
     pub fn link(&mut self, cell: K::Cell, other: K::Cell) {
+        K::link(self, cell, other);
+    }
+    pub fn connect(&mut self, cell: K::Cell, other: K::Cell) {
         self.links.add_edge(cell, other, ());
     }
     pub fn unlink(&mut self, cell: K::Cell, other: K::Cell) {
@@ -291,8 +297,7 @@ macro_rules! impl_rectangular {
 
                                 if self
                                     .north(cell)
-                                    .map(|north| self.are_linked(cell, north))
-                                    .unwrap_or(false)
+                                    .is_some_and(|north| self.are_linked(cell, north))
                                 {
                                     draw_filled_rect_mut(
                                         img,
@@ -303,8 +308,7 @@ macro_rules! impl_rectangular {
 
                                 if self
                                     .south(cell)
-                                    .map(|south| self.are_linked(cell, south))
-                                    .unwrap_or(false)
+                                    .is_some_and(|south| self.are_linked(cell, south))
                                 {
                                     draw_filled_rect_mut(
                                         img,
@@ -315,8 +319,7 @@ macro_rules! impl_rectangular {
 
                                 if self
                                     .west(cell)
-                                    .map(|west| self.are_linked(cell, west))
-                                    .unwrap_or(false)
+                                    .is_some_and(|west| self.are_linked(cell, west))
                                 {
                                     draw_filled_rect_mut(
                                         img,
@@ -327,8 +330,7 @@ macro_rules! impl_rectangular {
 
                                 if self
                                     .east(cell)
-                                    .map(|east| self.are_linked(cell, east))
-                                    .unwrap_or(false)
+                                    .is_some_and(|east| self.are_linked(cell, east))
                                 {
                                     draw_filled_rect_mut(
                                         img,
@@ -341,8 +343,7 @@ macro_rules! impl_rectangular {
                         SavePngMode::Walls => {
                             if self
                                 .north(cell)
-                                .map(|north| self.are_linked(cell, north))
-                                .unwrap_or(false)
+                                .is_some_and(|north| self.are_linked(cell, north))
                             {
                                 draw_antialiased_line_segment_mut(
                                     img,
@@ -370,8 +371,7 @@ macro_rules! impl_rectangular {
 
                             if self
                                 .south(cell)
-                                .map(|south| self.are_linked(cell, south))
-                                .unwrap_or(false)
+                                .is_some_and(|south| self.are_linked(cell, south))
                             {
                                 draw_antialiased_line_segment_mut(
                                     img,
@@ -399,8 +399,7 @@ macro_rules! impl_rectangular {
 
                             if self
                                 .west(cell)
-                                .map(|west| self.are_linked(cell, west))
-                                .unwrap_or(false)
+                                .is_some_and(|west| self.are_linked(cell, west))
                             {
                                 draw_antialiased_line_segment_mut(
                                     img,
@@ -428,8 +427,7 @@ macro_rules! impl_rectangular {
 
                             if self
                                 .east(cell)
-                                .map(|east| self.are_linked(cell, east))
-                                .unwrap_or(false)
+                                .is_some_and(|east| self.are_linked(cell, east))
                             {
                                 draw_antialiased_line_segment_mut(
                                     img,
@@ -518,8 +516,7 @@ macro_rules! impl_rectangular {
 
                             if !self
                                 .east(cell)
-                                .map(|east| self.are_linked(cell, east))
-                                .unwrap_or(false)
+                                .is_some_and(|east| self.are_linked(cell, east))
                             {
                                 draw_antialiased_line_segment_mut(
                                     img,
@@ -531,8 +528,7 @@ macro_rules! impl_rectangular {
                             }
                             if !self
                                 .south(cell)
-                                .map(|south| self.are_linked(cell, south))
-                                .unwrap_or(false)
+                                .is_some_and(|south| self.are_linked(cell, south))
                             {
                                 draw_antialiased_line_segment_mut(
                                     img,
@@ -617,8 +613,7 @@ macro_rules! impl_rectangular {
                             top.push_str(formatted_dist.as_deref().unwrap_or("   "));
                             let east_boundary = if self
                                 .east(cell)
-                                .map(|east| self.are_linked(cell, east))
-                                .unwrap_or(false)
+                                .is_some_and(|east| self.are_linked(cell, east))
                             {
                                 ' '
                             } else {
@@ -628,8 +623,7 @@ macro_rules! impl_rectangular {
 
                             let south_boundary = if self
                                 .south(cell)
-                                .map(|south| self.are_linked(cell, south))
-                                .unwrap_or(false)
+                                .is_some_and(|south| self.are_linked(cell, south))
                             {
                                 "   "
                             } else {
@@ -794,8 +788,7 @@ impl Grid<Polar> {
 
             if !self
                 .inward(cell)
-                .map(|inward| self.are_linked(cell, inward))
-                .unwrap_or(false)
+                .is_some_and(|inward| self.are_linked(cell, inward))
             {
                 draw_antialiased_line_segment_mut(
                     &mut img,
@@ -807,8 +800,7 @@ impl Grid<Polar> {
             }
             if !self
                 .clockwise(cell)
-                .map(|clockwise| self.are_linked(cell, clockwise))
-                .unwrap_or(false)
+                .is_some_and(|clockwise| self.are_linked(cell, clockwise))
             {
                 draw_antialiased_line_segment_mut(
                     &mut img,
@@ -960,8 +952,7 @@ impl Grid<Hex> {
 
                         if !self
                             .north_east(cell)
-                            .map(|north_east| self.are_linked(cell, north_east))
-                            .unwrap_or(false)
+                            .is_some_and(|north_east| self.are_linked(cell, north_east))
                         {
                             draw_antialiased_line_segment_mut(
                                 &mut img,
@@ -973,8 +964,7 @@ impl Grid<Hex> {
                         }
                         if !self
                             .south_east(cell)
-                            .map(|south_east| self.are_linked(cell, south_east))
-                            .unwrap_or(false)
+                            .is_some_and(|south_east| self.are_linked(cell, south_east))
                         {
                             draw_antialiased_line_segment_mut(
                                 &mut img,
@@ -986,8 +976,7 @@ impl Grid<Hex> {
                         }
                         if !self
                             .south(cell)
-                            .map(|south| self.are_linked(cell, south))
-                            .unwrap_or(false)
+                            .is_some_and(|south| self.are_linked(cell, south))
                         {
                             draw_antialiased_line_segment_mut(
                                 &mut img,
@@ -1098,8 +1087,7 @@ impl Grid<Triangle> {
 
                         if !self
                             .east(cell)
-                            .map(|east| self.are_linked(cell, east))
-                            .unwrap_or(false)
+                            .is_some_and(|east| self.are_linked(cell, east))
                         {
                             draw_antialiased_line_segment_mut(
                                 &mut img,
@@ -1114,8 +1102,7 @@ impl Grid<Triangle> {
                         let not_linked = !cell.is_upright()
                             && !self
                                 .north(cell)
-                                .map(|north| self.are_linked(cell, north))
-                                .unwrap_or(false);
+                                .is_some_and(|north| self.are_linked(cell, north));
                         if no_south || not_linked {
                             draw_antialiased_line_segment_mut(
                                 &mut img,
@@ -1157,6 +1144,405 @@ impl Grid<Weighted> {
         for other in connected {
             self.links.add_edge(cell, other, ());
         }
+    }
+}
+
+impl Grid<Weave> {
+    pub fn num_cols(&self) -> usize {
+        self.kind.cols
+    }
+
+    pub fn north(&self, cell: WeaveCell) -> Option<WeaveCell> {
+        self.get(cell.row() - 1, cell.col())
+    }
+    pub fn south(&self, cell: WeaveCell) -> Option<WeaveCell> {
+        self.get(cell.row() + 1, cell.col())
+    }
+    pub fn west(&self, cell: WeaveCell) -> Option<WeaveCell> {
+        self.get(cell.row(), cell.col() - 1)
+    }
+    pub fn east(&self, cell: WeaveCell) -> Option<WeaveCell> {
+        self.get(cell.row(), cell.col() + 1)
+    }
+
+    pub fn get(&self, row: isize, col: isize) -> Option<WeaveCell> {
+        self.links
+            .nodes()
+            .find(|n| n.is_over() && n.row() == row && n.col() == col)
+    }
+
+    fn has_north_link(&self, cell: WeaveCell) -> bool {
+        self.links(cell).any(|link| link.row() < cell.row())
+    }
+    fn has_south_link(&self, cell: WeaveCell) -> bool {
+        self.links(cell).any(|link| cell.row() < link.row())
+    }
+    fn has_west_link(&self, cell: WeaveCell) -> bool {
+        self.links(cell).any(|link| link.col() < cell.col())
+    }
+    fn has_east_link(&self, cell: WeaveCell) -> bool {
+        self.links(cell).any(|link| cell.col() < link.col())
+    }
+
+    pub fn is_horizontal_passage(&self, cell: WeaveCell) -> bool {
+        match cell {
+            WeaveCell::Over(_) => {
+                self.has_east_link(cell)
+                    && self.has_west_link(cell)
+                    && !self.has_north_link(cell)
+                    && !self.has_south_link(cell)
+            }
+            WeaveCell::Under(_) => self.has_west_link(cell) || self.has_east_link(cell),
+        }
+    }
+
+    pub fn is_vertical_passage(&self, cell: WeaveCell) -> bool {
+        match cell {
+            WeaveCell::Over(_) => {
+                self.has_north_link(cell)
+                    && self.has_south_link(cell)
+                    && !self.has_east_link(cell)
+                    && !self.has_west_link(cell)
+            }
+            WeaveCell::Under(_) => self.has_north_link(cell) || self.has_south_link(cell),
+        }
+    }
+
+    pub fn tunnel_under(&mut self, initial: WeaveCell, cell: OverCell, other: WeaveCell) {
+        let under = self.links.add_node(WeaveCell::Under(UnderCell::new(cell)));
+
+        self.connect(under, initial);
+        self.connect(under, other);
+    }
+
+    pub fn save_png(&self, file_name: &str, cell_size: u32, inset: f32) {
+        assert!(inset > 0.0, "inset must be non-zero for weave mazes");
+
+        let img_width = cell_size * self.num_cols() as u32;
+        let img_height = cell_size * self.num_rows() as u32;
+        let inset = (cell_size as f32 * inset) as u32;
+
+        let mut img = RgbImage::from_pixel(img_width + 1, img_height + 1, BACKGROUND);
+
+        let modes = [
+            self.distances().map(SavePngMode::Background),
+            Some(SavePngMode::Walls),
+        ]
+        .into_iter()
+        .flatten();
+        for mode in modes {
+            for cell in self.cells() {
+                let x = cell.col() as i32 * cell_size as i32;
+                let y = cell.row() as i32 * cell_size as i32;
+
+                match cell {
+                    WeaveCell::Over(_) => {
+                        self.render_cell_with_inset(
+                            &mut img,
+                            cell,
+                            &mode,
+                            cell_size,
+                            (x, y),
+                            inset,
+                        );
+                    }
+                    WeaveCell::Under(under) => self.render_under_cell_with_inset(
+                        &mut img,
+                        under,
+                        &mode,
+                        cell_size,
+                        (x, y),
+                        inset,
+                    ),
+                }
+            }
+        }
+
+        img.save(format!("images/{file_name}.png"))
+            .expect("image to be saved");
+    }
+
+    fn render_cell_with_inset(
+        &self,
+        img: &mut ImageBuffer<Rgb<u8>, Vec<u8>>,
+        cell: WeaveCell,
+        mode: &SavePngMode<Weave>,
+        cell_size: u32,
+        xy: (i32, i32),
+        inset: u32,
+    ) {
+        let [x1, x2, x3, x4, y1, y2, y3, y4] =
+            Self::cell_coordinates_with_inset(xy, cell_size, inset);
+
+        match mode {
+            SavePngMode::Background(distances) => {
+                if let Some(color) = Self::background_for_cell(distances, cell) {
+                    let inner_size = cell_size - 2 * inset;
+
+                    draw_filled_rect_mut(
+                        img,
+                        Rect::at(x2, y2).of_size(inner_size, inner_size),
+                        color,
+                    );
+
+                    if self.has_north_link(cell) {
+                        draw_filled_rect_mut(
+                            img,
+                            Rect::at(x2, y1).of_size(inner_size, inset),
+                            color,
+                        );
+                    }
+
+                    if self.has_south_link(cell) {
+                        draw_filled_rect_mut(
+                            img,
+                            Rect::at(x2, y3).of_size(inner_size, inset),
+                            color,
+                        );
+                    }
+
+                    if self.has_west_link(cell) {
+                        draw_filled_rect_mut(
+                            img,
+                            Rect::at(x1, y2).of_size(inset, inner_size),
+                            color,
+                        );
+                    }
+
+                    if self.has_east_link(cell) {
+                        draw_filled_rect_mut(
+                            img,
+                            Rect::at(x3, y2).of_size(inset, inner_size),
+                            color,
+                        );
+                    }
+                }
+            }
+            SavePngMode::Walls => {
+                if self.has_north_link(cell) {
+                    draw_antialiased_line_segment_mut(
+                        img,
+                        (x2, y1),
+                        (x2, y2),
+                        WALL,
+                        pixelops::interpolate,
+                    );
+                    draw_antialiased_line_segment_mut(
+                        img,
+                        (x3, y1),
+                        (x3, y2),
+                        WALL,
+                        pixelops::interpolate,
+                    );
+                } else {
+                    draw_antialiased_line_segment_mut(
+                        img,
+                        (x2, y2),
+                        (x3, y2),
+                        WALL,
+                        pixelops::interpolate,
+                    );
+                }
+
+                if self.has_south_link(cell) {
+                    draw_antialiased_line_segment_mut(
+                        img,
+                        (x2, y3),
+                        (x2, y4),
+                        WALL,
+                        pixelops::interpolate,
+                    );
+                    draw_antialiased_line_segment_mut(
+                        img,
+                        (x3, y3),
+                        (x3, y4),
+                        WALL,
+                        pixelops::interpolate,
+                    );
+                } else {
+                    draw_antialiased_line_segment_mut(
+                        img,
+                        (x2, y3),
+                        (x3, y3),
+                        WALL,
+                        pixelops::interpolate,
+                    );
+                }
+
+                if self.has_west_link(cell) {
+                    draw_antialiased_line_segment_mut(
+                        img,
+                        (x1, y2),
+                        (x2, y2),
+                        WALL,
+                        pixelops::interpolate,
+                    );
+                    draw_antialiased_line_segment_mut(
+                        img,
+                        (x1, y3),
+                        (x2, y3),
+                        WALL,
+                        pixelops::interpolate,
+                    );
+                } else {
+                    draw_antialiased_line_segment_mut(
+                        img,
+                        (x2, y2),
+                        (x2, y3),
+                        WALL,
+                        pixelops::interpolate,
+                    );
+                }
+
+                if self.has_east_link(cell) {
+                    draw_antialiased_line_segment_mut(
+                        img,
+                        (x3, y2),
+                        (x4, y2),
+                        WALL,
+                        pixelops::interpolate,
+                    );
+                    draw_antialiased_line_segment_mut(
+                        img,
+                        (x3, y3),
+                        (x4, y3),
+                        WALL,
+                        pixelops::interpolate,
+                    );
+                } else {
+                    draw_antialiased_line_segment_mut(
+                        img,
+                        (x3, y2),
+                        (x3, y3),
+                        WALL,
+                        pixelops::interpolate,
+                    );
+                }
+            }
+        }
+    }
+
+    fn render_under_cell_with_inset(
+        &self,
+        img: &mut ImageBuffer<Rgb<u8>, Vec<u8>>,
+        cell: UnderCell,
+        mode: &SavePngMode<Weave>,
+        cell_size: u32,
+        xy: (i32, i32),
+        inset: u32,
+    ) {
+        let [x1, x2, x3, x4, y1, y2, y3, y4] =
+            Self::cell_coordinates_with_inset(xy, cell_size, inset);
+        let is_vertical = self.is_vertical_passage(WeaveCell::Under(cell));
+
+        match mode {
+            SavePngMode::Background(ref distances) => {
+                if let Some(color) = Self::background_for_cell(distances, WeaveCell::Under(cell)) {
+                    let inner_size = cell_size - 2 * inset;
+
+                    if is_vertical {
+                        draw_filled_rect_mut(
+                            img,
+                            Rect::at(x2, y1).of_size(inner_size, inset),
+                            color,
+                        );
+                        draw_filled_rect_mut(
+                            img,
+                            Rect::at(x2, y3).of_size(inner_size, inset),
+                            color,
+                        );
+                    } else {
+                        draw_filled_rect_mut(
+                            img,
+                            Rect::at(x1, y2).of_size(inset, inner_size),
+                            color,
+                        );
+                        draw_filled_rect_mut(
+                            img,
+                            Rect::at(x3, y2).of_size(inset, inner_size),
+                            color,
+                        );
+                    }
+                }
+            }
+            SavePngMode::Walls => {
+                if is_vertical {
+                    draw_antialiased_line_segment_mut(
+                        img,
+                        (x2, y1),
+                        (x2, y2),
+                        WALL,
+                        pixelops::interpolate,
+                    );
+                    draw_antialiased_line_segment_mut(
+                        img,
+                        (x3, y1),
+                        (x3, y2),
+                        WALL,
+                        pixelops::interpolate,
+                    );
+                    draw_antialiased_line_segment_mut(
+                        img,
+                        (x2, y3),
+                        (x2, y4),
+                        WALL,
+                        pixelops::interpolate,
+                    );
+                    draw_antialiased_line_segment_mut(
+                        img,
+                        (x3, y3),
+                        (x3, y4),
+                        WALL,
+                        pixelops::interpolate,
+                    );
+                } else {
+                    draw_antialiased_line_segment_mut(
+                        img,
+                        (x1, y2),
+                        (x2, y2),
+                        WALL,
+                        pixelops::interpolate,
+                    );
+                    draw_antialiased_line_segment_mut(
+                        img,
+                        (x1, y3),
+                        (x2, y3),
+                        WALL,
+                        pixelops::interpolate,
+                    );
+                    draw_antialiased_line_segment_mut(
+                        img,
+                        (x3, y2),
+                        (x4, y2),
+                        WALL,
+                        pixelops::interpolate,
+                    );
+                    draw_antialiased_line_segment_mut(
+                        img,
+                        (x3, y3),
+                        (x4, y3),
+                        WALL,
+                        pixelops::interpolate,
+                    );
+                }
+            }
+        }
+    }
+
+    fn cell_coordinates_with_inset(xy: (i32, i32), cell_size: u32, inset: u32) -> [i32; 8] {
+        let cell_size = cell_size as i32;
+        let inset = inset as i32;
+
+        let (x1, y1) = xy;
+        let x4 = x1 + cell_size;
+        let x2 = x1 + inset;
+        let x3 = x4 - inset;
+
+        let y4 = y1 + cell_size;
+        let y2 = y1 + inset;
+        let y3 = y4 - inset;
+
+        [x1, x2, x3, x4, y1, y2, y3, y4]
     }
 }
 

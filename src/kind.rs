@@ -3,7 +3,7 @@ use std::f32;
 use petgraph::prelude::UnGraphMap;
 
 use crate::{
-    cell::{CellKind, HexCell, PolarCell, RegularCell, TriangleCell, WeightedCell},
+    cell::{CellKind, HexCell, PolarCell, RegularCell, TriangleCell, WeaveCell, WeightedCell},
     grid::{row_len, Grid},
     mask::Mask,
 };
@@ -70,6 +70,17 @@ impl Weighted {
     }
 }
 
+pub struct Weave {
+    pub rows: usize,
+    pub cols: usize,
+}
+
+impl Weave {
+    pub fn new(rows: usize, cols: usize) -> Self {
+        Self { rows, cols }
+    }
+}
+
 pub trait Kind
 where
     Self: Sized,
@@ -78,6 +89,10 @@ where
 
     fn num_rows(&self) -> usize;
     fn prepare_grid(&self) -> UnGraphMap<Self::Cell, ()>;
+
+    fn link(grid: &mut Grid<Self>, cell: Self::Cell, other: Self::Cell) {
+        grid.connect(cell, other);
+    }
     fn neighbours(grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell>;
 }
 
@@ -242,4 +257,73 @@ impl Kind for Weighted {
 
     default_prepare_grid!();
     default_neighbours!();
+}
+
+impl Kind for Weave {
+    type Cell = WeaveCell;
+
+    fn num_rows(&self) -> usize {
+        self.rows
+    }
+
+    default_prepare_grid!();
+
+    fn link(grid: &mut Grid<Self>, cell: Self::Cell, other: Self::Cell) {
+        let neighbour = if grid.north(cell).is_some() && grid.north(cell) == grid.south(other) {
+            grid.north(cell)
+        } else if grid.south(cell).is_some() && grid.south(cell) == grid.north(other) {
+            grid.south(cell)
+        } else if grid.east(cell).is_some() && grid.east(cell) == grid.west(other) {
+            grid.east(cell)
+        } else if grid.west(cell).is_some() && grid.west(cell) == grid.east(other) {
+            grid.west(cell)
+        } else {
+            None
+        };
+
+        match neighbour {
+            Some(WeaveCell::Over(neighbour)) => grid.tunnel_under(cell, neighbour, other),
+            Some(WeaveCell::Under(_)) => panic!("cannot tunnel under another under cell"),
+            None => {
+                grid.connect(cell, other);
+            }
+        }
+    }
+
+    fn neighbours(grid: &Grid<Self>, cell: WeaveCell) -> impl Iterator<Item = WeaveCell> {
+        let north = grid.north(cell);
+        let south = grid.south(cell);
+        let west = grid.west(cell);
+        let east = grid.east(cell);
+
+        let north_north = grid
+            .north(cell)
+            .filter(|north| grid.is_horizontal_passage(*north))
+            .and_then(|north| grid.north(north));
+        let south_south = grid
+            .south(cell)
+            .filter(|south| grid.is_horizontal_passage(*south))
+            .and_then(|south| grid.south(south));
+        let west_west = grid
+            .west(cell)
+            .filter(|west| grid.is_vertical_passage(*west))
+            .and_then(|west| grid.west(west));
+        let east_east = grid
+            .east(cell)
+            .filter(|east| grid.is_vertical_passage(*east))
+            .and_then(|east| grid.east(east));
+
+        [
+            north,
+            south,
+            west,
+            east,
+            north_north,
+            south_south,
+            west_west,
+            east_east,
+        ]
+        .into_iter()
+        .flatten()
+    }
 }
