@@ -9,6 +9,8 @@ enum Generator {
     HuntAndKill,
     RecursiveBacktracker,
     Kruskals,
+    SimplifiedPrims,
+    TruePrims,
 }
 
 fn main() {
@@ -20,6 +22,8 @@ fn main() {
         Generator::HuntAndKill,
         Generator::RecursiveBacktracker,
         Generator::Kruskals,
+        Generator::SimplifiedPrims,
+        Generator::TruePrims,
     ];
 
     const TRIES: usize = 100;
@@ -40,6 +44,8 @@ fn main() {
                     Generator::HuntAndKill => grid.hunt_and_kill(),
                     Generator::RecursiveBacktracker => grid.recursive_backtracker(),
                     Generator::Kruskals => grid.kruskals(),
+                    Generator::SimplifiedPrims => grid.simplified_prims(),
+                    Generator::TruePrims => grid.true_prims(),
                 };
                 grid.dead_ends().len()
             })

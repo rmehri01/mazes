@@ -93,3 +93,7 @@ path = "demos/weave.rs"
 [[bin]]
 name = "kruskals"
 path = "demos/kruskals.rs"
+
+[[bin]]
+name = "prims"
+path = "demos/prims.rs"
