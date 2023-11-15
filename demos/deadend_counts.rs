@@ -11,6 +11,7 @@ enum Generator {
     Kruskals,
     SimplifiedPrims,
     TruePrims,
+    Ellers,
 }
 
 fn main() {
@@ -24,6 +25,7 @@ fn main() {
         Generator::Kruskals,
         Generator::SimplifiedPrims,
         Generator::TruePrims,
+        Generator::Ellers,
     ];
 
     const TRIES: usize = 100;
@@ -46,6 +48,7 @@ fn main() {
                     Generator::Kruskals => grid.kruskals(),
                     Generator::SimplifiedPrims => grid.simplified_prims(),
                     Generator::TruePrims => grid.true_prims(),
+                    Generator::Ellers => grid.ellers(),
                 };
                 grid.dead_ends().len()
             })

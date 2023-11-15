@@ -101,3 +101,7 @@ path = "demos/prims.rs"
 [[bin]]
 name = "growing_tree"
 path = "demos/growing_tree.rs"
+
+[[bin]]
+name = "ellers"
+path = "demos/ellers.rs"

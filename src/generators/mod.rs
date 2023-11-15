@@ -1,5 +1,6 @@
 mod aldous_broder;
 mod binary_tree;
+mod ellers;
 mod growing_tree;
 mod hunt_and_kill;
 mod kruskals;
