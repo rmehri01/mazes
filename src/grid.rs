@@ -59,6 +59,9 @@ impl<K: Kind> Grid<K> {
     pub fn cells(&self) -> Vec<K::Cell> {
         self.links.nodes().collect()
     }
+    pub fn neighbouring_cells(&self) -> Vec<(K::Cell, K::Cell)> {
+        K::neighbouring_cells(self)
+    }
 
     pub fn link(&mut self, cell: K::Cell, other: K::Cell) {
         K::link(self, cell, other);
@@ -78,7 +81,7 @@ impl<K: Kind> Grid<K> {
     }
 
     pub fn neighbours(&self, cell: K::Cell) -> impl Iterator<Item = K::Cell> + '_ {
-        K::neighbours(self, cell)
+        self.kind.neighbours(self, cell)
     }
 
     pub fn get_random_cell(&self) -> K::Cell {
@@ -196,6 +199,10 @@ impl<K: Kind> Grid<K> {
 
     pub fn num_rows(&self) -> usize {
         self.kind.num_rows()
+    }
+
+    pub fn get_kind_mut(&mut self) -> &mut K {
+        &mut self.kind
     }
 }
 
@@ -1208,11 +1215,18 @@ impl Grid<Weave> {
         }
     }
 
-    pub fn tunnel_under(&mut self, initial: WeaveCell, cell: OverCell, other: WeaveCell) {
+    pub fn tunnel_under(
+        &mut self,
+        initial: WeaveCell,
+        cell: OverCell,
+        other: WeaveCell,
+    ) -> WeaveCell {
         let under = self.links.add_node(WeaveCell::Under(UnderCell::new(cell)));
 
         self.connect(under, initial);
         self.connect(under, other);
+
+        under
     }
 
     pub fn save_png(&self, file_name: &str, cell_size: u32, inset: f32) {

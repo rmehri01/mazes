@@ -8,6 +8,7 @@ enum Generator {
     Wilsons,
     HuntAndKill,
     RecursiveBacktracker,
+    Kruskals,
 }
 
 fn main() {
@@ -18,6 +19,7 @@ fn main() {
         Generator::Wilsons,
         Generator::HuntAndKill,
         Generator::RecursiveBacktracker,
+        Generator::Kruskals,
     ];
 
     const TRIES: usize = 100;
@@ -37,6 +39,7 @@ fn main() {
                     Generator::Wilsons => grid.wilsons(),
                     Generator::HuntAndKill => grid.hunt_and_kill(),
                     Generator::RecursiveBacktracker => grid.recursive_backtracker(),
+                    Generator::Kruskals => grid.kruskals(),
                 };
                 grid.dead_ends().len()
             })

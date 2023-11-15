@@ -89,3 +89,7 @@ path = "demos/inset.rs"
 [[bin]]
 name = "weave"
 path = "demos/weave.rs"
+
+[[bin]]
+name = "kruskals"
+path = "demos/kruskals.rs"

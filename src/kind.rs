@@ -73,11 +73,16 @@ impl Weighted {
 pub struct Weave {
     pub rows: usize,
     pub cols: usize,
+    pub is_preconfigured: bool,
 }
 
 impl Weave {
     pub fn new(rows: usize, cols: usize) -> Self {
-        Self { rows, cols }
+        Self {
+            rows,
+            cols,
+            is_preconfigured: false,
+        }
     }
 }
 
@@ -90,10 +95,11 @@ where
     fn num_rows(&self) -> usize;
     fn prepare_grid(&self) -> UnGraphMap<Self::Cell, ()>;
 
+    fn neighbouring_cells(grid: &Grid<Self>) -> Vec<(Self::Cell, Self::Cell)>;
     fn link(grid: &mut Grid<Self>, cell: Self::Cell, other: Self::Cell) {
         grid.connect(cell, other);
     }
-    fn neighbours(grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell>;
+    fn neighbours(&self, grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell>;
 }
 
 macro_rules! default_prepare_grid {
@@ -114,9 +120,31 @@ macro_rules! default_prepare_grid {
     };
 }
 
+macro_rules! default_neighbouring_cells {
+    () => {
+        fn neighbouring_cells(grid: &Grid<Self>) -> Vec<(Self::Cell, Self::Cell)> {
+            grid.cells()
+                .into_iter()
+                .flat_map(|cell| {
+                    [
+                        Some(cell).zip(grid.south(cell)),
+                        Some(cell).zip(grid.east(cell)),
+                    ]
+                    .into_iter()
+                    .flatten()
+                })
+                .collect()
+        }
+    };
+}
+
 macro_rules! default_neighbours {
     () => {
-        fn neighbours(grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell> {
+        fn neighbours(
+            &self,
+            grid: &Grid<Self>,
+            cell: Self::Cell,
+        ) -> impl Iterator<Item = Self::Cell> {
             let north = grid.north(cell);
             let south = grid.south(cell);
             let west = grid.west(cell);
@@ -134,6 +162,7 @@ impl Kind for Regular {
         self.rows
     }
 
+    default_neighbouring_cells!();
     default_prepare_grid!();
     default_neighbours!();
 }
@@ -165,6 +194,7 @@ impl Kind for Masked {
         links
     }
 
+    default_neighbouring_cells!();
     default_neighbours!();
 }
 
@@ -202,7 +232,21 @@ impl Kind for Polar {
         links
     }
 
-    fn neighbours(grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell> {
+    fn neighbouring_cells(grid: &Grid<Self>) -> Vec<(Self::Cell, Self::Cell)> {
+        grid.cells()
+            .into_iter()
+            .flat_map(|cell| {
+                [
+                    Some(cell).zip(grid.inward(cell)),
+                    Some(cell).zip(grid.clockwise(cell)),
+                ]
+                .into_iter()
+                .flatten()
+            })
+            .collect()
+    }
+
+    fn neighbours(&self, grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell> {
         let clockwise = grid.clockwise(cell);
         let counter_clockwise = grid.counter_clockwise(cell);
         let inward = grid.inward(cell);
@@ -223,7 +267,21 @@ impl Kind for Hex {
 
     default_prepare_grid!();
 
-    fn neighbours(grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell> {
+    fn neighbouring_cells(grid: &Grid<Self>) -> Vec<(Self::Cell, Self::Cell)> {
+        grid.cells()
+            .into_iter()
+            .flat_map(|cell| {
+                [
+                    Some(cell).zip(grid.south(cell)),
+                    Some(cell).zip(grid.get_next_in_row(cell)),
+                ]
+                .into_iter()
+                .flatten()
+            })
+            .collect()
+    }
+
+    fn neighbours(&self, grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell> {
         let north_west = grid.north_west(cell);
         let north = grid.north(cell);
         let north_east = grid.north_east(cell);
@@ -245,6 +303,7 @@ impl Kind for Triangle {
     }
 
     default_prepare_grid!();
+    default_neighbouring_cells!();
     default_neighbours!();
 }
 
@@ -256,6 +315,7 @@ impl Kind for Weighted {
     }
 
     default_prepare_grid!();
+    default_neighbouring_cells!();
     default_neighbours!();
 }
 
@@ -267,6 +327,7 @@ impl Kind for Weave {
     }
 
     default_prepare_grid!();
+    default_neighbouring_cells!();
 
     fn link(grid: &mut Grid<Self>, cell: Self::Cell, other: Self::Cell) {
         let neighbour = if grid.north(cell).is_some() && grid.north(cell) == grid.south(other) {
@@ -282,7 +343,9 @@ impl Kind for Weave {
         };
 
         match neighbour {
-            Some(WeaveCell::Over(neighbour)) => grid.tunnel_under(cell, neighbour, other),
+            Some(WeaveCell::Over(neighbour)) => {
+                grid.tunnel_under(cell, neighbour, other);
+            }
             Some(WeaveCell::Under(_)) => panic!("cannot tunnel under another under cell"),
             None => {
                 grid.connect(cell, other);
@@ -290,40 +353,35 @@ impl Kind for Weave {
         }
     }
 
-    fn neighbours(grid: &Grid<Self>, cell: WeaveCell) -> impl Iterator<Item = WeaveCell> {
+    fn neighbours(&self, grid: &Grid<Self>, cell: WeaveCell) -> impl Iterator<Item = WeaveCell> {
         let north = grid.north(cell);
         let south = grid.south(cell);
         let west = grid.west(cell);
         let east = grid.east(cell);
 
-        let north_north = grid
-            .north(cell)
-            .filter(|north| grid.is_horizontal_passage(*north))
-            .and_then(|north| grid.north(north));
-        let south_south = grid
-            .south(cell)
-            .filter(|south| grid.is_horizontal_passage(*south))
-            .and_then(|south| grid.south(south));
-        let west_west = grid
-            .west(cell)
-            .filter(|west| grid.is_vertical_passage(*west))
-            .and_then(|west| grid.west(west));
-        let east_east = grid
-            .east(cell)
-            .filter(|east| grid.is_vertical_passage(*east))
-            .and_then(|east| grid.east(east));
+        let mut neighbours = vec![north, south, west, east];
 
-        [
-            north,
-            south,
-            west,
-            east,
-            north_north,
-            south_south,
-            west_west,
-            east_east,
-        ]
-        .into_iter()
-        .flatten()
+        if !self.is_preconfigured {
+            // try to create passages
+            let north_north = grid
+                .north(cell)
+                .filter(|north| grid.is_horizontal_passage(*north))
+                .and_then(|north| grid.north(north));
+            let south_south = grid
+                .south(cell)
+                .filter(|south| grid.is_horizontal_passage(*south))
+                .and_then(|south| grid.south(south));
+            let west_west = grid
+                .west(cell)
+                .filter(|west| grid.is_vertical_passage(*west))
+                .and_then(|west| grid.west(west));
+            let east_east = grid
+                .east(cell)
+                .filter(|east| grid.is_vertical_passage(*east))
+                .and_then(|east| grid.east(east));
+            neighbours.extend([north_north, south_south, west_west, east_east]);
+        }
+
+        neighbours.into_iter().flatten()
     }
 }

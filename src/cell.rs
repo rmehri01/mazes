@@ -134,7 +134,7 @@ impl UnderCell {
 
 pub trait CellKind
 where
-    Self: Clone + Copy + PartialEq + Eq + PartialOrd + Ord + std::hash::Hash,
+    Self: std::fmt::Debug + Clone + Copy + PartialEq + Eq + PartialOrd + Ord + std::hash::Hash,
 {
     fn row(&self) -> isize;
     fn weight(&self) -> usize {
