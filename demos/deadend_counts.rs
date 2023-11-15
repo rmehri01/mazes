@@ -12,6 +12,7 @@ enum Generator {
     SimplifiedPrims,
     TruePrims,
     Ellers,
+    RecursiveDivision,
 }
 
 fn main() {
@@ -26,6 +27,7 @@ fn main() {
         Generator::SimplifiedPrims,
         Generator::TruePrims,
         Generator::Ellers,
+        Generator::RecursiveDivision,
     ];
 
     const TRIES: usize = 100;
@@ -49,6 +51,7 @@ fn main() {
                     Generator::SimplifiedPrims => grid.simplified_prims(),
                     Generator::TruePrims => grid.true_prims(),
                     Generator::Ellers => grid.ellers(),
+                    Generator::RecursiveDivision => grid.recursive_division(),
                 };
                 grid.dead_ends().len()
             })

@@ -6,5 +6,6 @@ mod hunt_and_kill;
 mod kruskals;
 mod prims;
 mod recursive_backtracker;
+mod recursive_division;
 mod sidewinder;
 mod wilsons;

@@ -105,3 +105,7 @@ path = "demos/growing_tree.rs"
 [[bin]]
 name = "ellers"
 path = "demos/ellers.rs"
+
+[[bin]]
+name = "recursive_division"
+path = "demos/recursive_division.rs"
