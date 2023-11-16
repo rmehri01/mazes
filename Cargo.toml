@@ -109,3 +109,7 @@ path = "demos/ellers.rs"
 [[bin]]
 name = "recursive_division"
 path = "demos/recursive_division.rs"
+
+[[bin]]
+name = "3d"
+path = "demos/3d.rs"

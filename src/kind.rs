@@ -3,7 +3,10 @@ use std::f32;
 use petgraph::prelude::UnGraphMap;
 
 use crate::{
-    cell::{CellKind, HexCell, PolarCell, RegularCell, TriangleCell, WeaveCell, WeightedCell},
+    cell::{
+        CellKind, HexCell, PolarCell, RegularCell, ThreeDCell, TriangleCell, WeaveCell,
+        WeightedCell,
+    },
     grid::{row_len, Grid},
     mask::Mask,
 };
@@ -83,6 +86,18 @@ impl Weave {
             cols,
             is_preconfigured: false,
         }
+    }
+}
+
+pub struct ThreeD {
+    pub rows: usize,
+    pub cols: usize,
+    pub levels: usize,
+}
+
+impl ThreeD {
+    pub fn new(rows: usize, cols: usize, levels: usize) -> Self {
+        Self { rows, cols, levels }
     }
 }
 
@@ -383,5 +398,56 @@ impl Kind for Weave {
         }
 
         neighbours.into_iter().flatten()
+    }
+}
+
+impl Kind for ThreeD {
+    type Cell = ThreeDCell;
+
+    fn num_rows(&self) -> usize {
+        self.rows
+    }
+
+    fn prepare_grid(&self) -> UnGraphMap<ThreeDCell, ()> {
+        let rows = self.rows;
+        let cols = self.cols;
+        let levels = self.levels;
+
+        let mut links = UnGraphMap::with_capacity(rows * cols * levels, 0);
+        for row in 0..rows {
+            for col in 0..cols {
+                for level in 0..levels {
+                    links.add_node(ThreeDCell::new(row as isize, col as isize, level as isize));
+                }
+            }
+        }
+
+        links
+    }
+
+    fn neighbouring_cells(grid: &Grid<Self>) -> Vec<(Self::Cell, Self::Cell)> {
+        grid.cells()
+            .into_iter()
+            .flat_map(|cell| {
+                [
+                    Some(cell).zip(grid.south(cell)),
+                    Some(cell).zip(grid.east(cell)),
+                    Some(cell).zip(grid.down(cell)),
+                ]
+                .into_iter()
+                .flatten()
+            })
+            .collect()
+    }
+
+    fn neighbours(&self, grid: &Grid<Self>, cell: Self::Cell) -> impl Iterator<Item = Self::Cell> {
+        let north = grid.north(cell);
+        let south = grid.south(cell);
+        let west = grid.west(cell);
+        let east = grid.east(cell);
+        let up = grid.up(cell);
+        let down = grid.down(cell);
+
+        [north, south, west, east, up, down].into_iter().flatten()
     }
 }

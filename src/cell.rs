@@ -132,6 +132,19 @@ impl UnderCell {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ThreeDCell {
+    pub row: isize,
+    pub col: isize,
+    pub level: isize,
+}
+
+impl ThreeDCell {
+    pub fn new(row: isize, col: isize, level: isize) -> Self {
+        Self { row, col, level }
+    }
+}
+
 pub trait CellKind
 where
     Self: std::fmt::Debug + Clone + Copy + PartialEq + Eq + PartialOrd + Ord + std::hash::Hash,
@@ -182,5 +195,11 @@ impl CellKind for WeaveCell {
             Self::Over(o) => o.row,
             Self::Under(u) => u.over.row,
         }
+    }
+}
+
+impl CellKind for ThreeDCell {
+    fn row(&self) -> isize {
+        self.row
     }
 }

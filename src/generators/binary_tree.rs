@@ -1,6 +1,8 @@
+use rand::Rng;
+
 use crate::{
     grid::Grid,
-    kind::{Hex, Regular},
+    kind::{Hex, Regular, ThreeD},
 };
 
 impl Grid<Regular> {
@@ -36,6 +38,36 @@ impl Grid<Hex> {
                         self.link(cell, east);
                     }
                 }
+            }
+        }
+
+        self
+    }
+}
+
+impl Grid<ThreeD> {
+    pub fn binary_tree(mut self) -> Self {
+        for cell in self.cells() {
+            match (self.north(cell), self.east(cell), self.up(cell)) {
+                (None, None, None) => {}
+                (None, Some(other), None)
+                | (Some(other), None, None)
+                | (None, None, Some(other)) => self.link(cell, other),
+                (None, Some(first), Some(second))
+                | (Some(first), None, Some(second))
+                | (Some(first), Some(second), None) => {
+                    if rand::random() {
+                        self.link(cell, first);
+                    } else {
+                        self.link(cell, second);
+                    }
+                }
+                (Some(north), Some(east), Some(up)) => match rand::thread_rng().gen_range(0..3) {
+                    0 => self.link(cell, north),
+                    1 => self.link(cell, east),
+                    2 => self.link(cell, up),
+                    _ => unreachable!(),
+                },
             }
         }
 
